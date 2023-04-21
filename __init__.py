@@ -31,7 +31,7 @@ from .operators.set_vertex_alpha import lr_vertex_rgb_to_alpha
 from .operators.select import lr_select_obj_by_topology,lr_deselect_duplicate
 from .operators.replace_children import lr_replace_children
 from .operators.sculpt import lr_multires_sculpt_offset
-
+from .operators.object_drop import OBJECT_OT_lr_drop_object
 
 
 
@@ -46,8 +46,8 @@ from bpy.props import IntProperty, CollectionProperty, StringProperty,FloatVecto
 from bpy.types import Menu
 from bpy.types import Operator
 from bpy.app.handlers import persistent
-
-
+#For sub panels
+from bl_ui.properties_object import ObjectButtonsPanel
 
 
 
@@ -133,6 +133,14 @@ def unregister_keymaps():
 # Properties 
 # To acess properties: bpy.data.scenes['Scene'].lr_tools
 # Is assigned by pointer property below in class registration.
+
+
+# def execute_hide_operator(self, context):
+#     eval('bpy.ops.' + self.hide_objs + '()')
+# def execute_unhide_operator(self, context):
+#     eval('bpy.ops.' + self.unhide_objs + '()')
+
+
 class lr_tool_settings(bpy.types.PropertyGroup):
     uv_map_new_name: bpy.props.StringProperty(name="  Name", description="Name of the new UV set on selected", default="Bake", maxlen=1024,)
     name_to_uv_index_set: bpy.props.StringProperty(name="  Name", description="Set uv index by name", default="UVMap Name", maxlen=1024,)
@@ -144,6 +152,33 @@ class lr_tool_settings(bpy.types.PropertyGroup):
     lr_vc_swatch: FloatVectorProperty(name="object_color",subtype='COLOR',default=(1.0, 1.0, 1.0),min=0.0, max=1.0,description="color picker")
     lr_vc_alpha_swatch: bpy.props.FloatProperty(name="Alpha Value", step = 5, default=0.5, min = 0, max = 1)
     
+
+    # # Enum for hiding and unhiding objects
+    # hide_objs:bpy.props.EnumProperty(
+    #     name = 'Hide Obj',
+    #     items=[
+    #         ("object.lr_hide_object", "Cube", '', 'HIDE_ON', 0),
+    #         ("mesh.primitive_cube_add", "Cube", '', 'HIDE_ON', 1),
+    #         ("mesh.primitive_circle_add", "Circle", '', 'HIDE_ON', 2),
+    #         ("mesh.primitive_uv_sphere_add", "UV Sphere", '', 'HIDE_ON', 3),
+    #     ],
+    #     description="offers....",
+    #     #default="mesh.primitive_circle_add",
+    #     update=execute_hide_operator
+    # )
+
+    # unhide_objs:bpy.props.EnumProperty(
+    #     name = 'Show Obj',
+    #     items=[
+    #         ("mesh.primitive_plane_add", "Plane", '', 'MESH_PLANE', 0),
+    #         ("mesh.primitive_cube_add", "Cube", '', 'MESH_CUBE', 1),
+    #         ("mesh.primitive_circle_add", "Circle", '', 'MESH_CIRCLE', 2),
+    #         ("mesh.primitive_uv_sphere_add", "UV Sphere", '', 'MESH_UVSPHERE', 3),
+    #     ],
+    #     description="offers....",
+    #     #default="mesh.primitive_plane_add",
+    #     update=execute_unhide_operator
+    # )
 
 #UI -------------------------------------------------------------------------------------
 class VIEW3D_PT_lr_vertex(bpy.types.Panel):
@@ -260,9 +295,12 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         props_a.set_a = 1
 
 
+
+
 class VIEW3D_PT_lr_object(bpy.types.Panel):
     bl_idname = "OBJECT_PT_lr_object"
     bl_label = "OBJECT"
+    bl_options = {'DEFAULT_CLOSED'}
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = "LR"
@@ -274,8 +312,16 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
 
         
     def draw(self, context):
-             
+        lr_tools = context.scene.lr_tools
+        
+
         layout = self.layout.box()
+        layout.operator('lr.drop_object', text='Drop Obj', icon = 'TRIA_DOWN_BAR')
+        
+        
+        
+        layout = self.layout.box()
+        
         layout.label(text="Replace references")
         row = layout.row(align=True)
         row.operator("object.lr_replace_objects", text="Object from active", icon = 'UV_SYNC_SELECT')
@@ -289,52 +335,59 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
         layout.operator("object.lr_select_obj_by_topology", text="Topology", icon = 'MOD_WIREFRAME')
         layout.operator("object.lr_deselect_duplicate", text="Deselect duplicate", icon = 'GHOST_DISABLED')
 
+
+
         layout = self.layout.box()
         layout.label(text="Hide/Unhide")
-        
+        # layout.prop(lr_tools, "hide_objs")
+        # layout.prop(lr_tools, "unhide_objs")
+
+
         row = layout.column_flow(columns=2,align=True)
 
-        op = row.operator("object.lr_hide_object", text="UCX_", icon = 'HIDE_ON')
-        op.name = 'UCX_'
-        op.hide = True
+
+
+        # op = row.operator("object.lr_hide_object", text="UCX_", icon = 'HIDE_ON')
+        # op.name = 'UCX_'
+        # op.hide = True
         
-        op = row.operator("object.lr_hide_object", text="_HP", icon = 'HIDE_ON')
-        op.name = '_HP'
-        op.hide = True
+        # op = row.operator("object.lr_hide_object", text="_HP", icon = 'HIDE_ON')
+        # op.name = '_HP'
+        # op.hide = True
 
-        op = row.operator("object.lr_hide_object", text="_LP", icon = 'HIDE_ON')
-        op.name = '_LP'
-        op.hide = True
+        # op = row.operator("object.lr_hide_object", text="_LP", icon = 'HIDE_ON')
+        # op.name = '_LP'
+        # op.hide = True
 
-        op = row.operator("object.lr_hide_object", text="_CAGE", icon = 'HIDE_ON')
-        op.name = '_CAGE'
-        op.hide = True
+        # op = row.operator("object.lr_hide_object", text="_CAGE", icon = 'HIDE_ON')
+        # op.name = '_CAGE'
+        # op.hide = True
 
-        op = row.operator("object.lr_hide_unhide_lattice", text="Lattice", icon = 'HIDE_ON')
-        op.hide_lattice = True
-
-
+        # op = row.operator("object.lr_hide_unhide_lattice", text="Lattice", icon = 'HIDE_ON')
+        # op.hide_lattice = True
 
 
-        op = row.operator("object.lr_hide_object", text="UCX_", icon ='HIDE_OFF')
-        op.name = 'UCX_'
-        op.hide = False
+
+
         
-        op = row.operator("object.lr_hide_object", text="_HP", icon ='HIDE_OFF')
-        op.name = '_HP'
-        op.hide = False
+        # op = row.operator("object.lr_hide_object", text="UCX_", icon ='HIDE_OFF')
+        # op.name = 'UCX_'
+        # op.hide = False
+        
+        # op = row.operator("object.lr_hide_object", text="_HP", icon ='HIDE_OFF')
+        # op.name = '_HP'
+        # op.hide = False
 
-        op = row.operator("object.lr_hide_object", text="_LP", icon ='HIDE_OFF')
-        op.name = '_LP'
-        op.hide = False
+        # op = row.operator("object.lr_hide_object", text="_LP", icon ='HIDE_OFF')
+        # op.name = '_LP'
+        # op.hide = False
 
-        op = row.operator("object.lr_hide_object", text="_CAGE", icon = 'HIDE_OFF')
-        op.name = '_CAGE'
-        op.hide = False
+        # op = row.operator("object.lr_hide_object", text="_CAGE", icon = 'HIDE_OFF')
+        # op.name = '_CAGE'
+        # op.hide = False
 
-        op = row.operator("object.lr_hide_unhide_lattice", text="Lattice", icon = 'HIDE_OFF')
-        op.hide_lattice = False
-
+        # op = row.operator("object.lr_hide_unhide_lattice", text="Lattice", icon = 'HIDE_OFF')
+        # op.hide_lattice = False
 
 
         row = layout.column_flow(columns=2,align=True)
@@ -345,6 +398,9 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
         op = row.operator("object.lr_hide_subd_modifier", text="SubD", icon = 'HIDE_OFF')
         op.hide_subsurf = False
         op.hide_subsurf_active = False
+
+
+
 
 
         layout = self.layout.box()
@@ -368,6 +424,11 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
         layout.label(text="Export")
         layout.operator("object.lr_export_but_one_material", text="With one material", icon='EXPORT')
         layout.operator("object.lr_exportformask", text="With one material and one specified UVSet", icon='EXPORT')
+
+
+
+
+
 
 
 
@@ -524,6 +585,8 @@ classes = (AddonPreferences,
             VIEW3D_PT_lr_mesh,
             VIEW3D_PT_lr_uv,
             VIEW3D_PT_lr_object,
+
+            OBJECT_OT_lr_drop_object,
             #VIEW3D_PT_lr_ucx
             )
 
