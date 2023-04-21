@@ -16,7 +16,6 @@ class lr_export_but_one_material(bpy.types.Operator):
         ina_objmain = []
 
 
-
         new_help = act_obj.copy()
         bpy.context.scene.collection.objects.link(new_help)
 

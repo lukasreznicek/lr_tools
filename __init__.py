@@ -24,6 +24,7 @@ bl_info = {
 
 import bpy, os, bmesh
 
+
 from .operators.unwrap_in_place import LR_Unwrap
 from .operators.export import lr_export_but_one_material,lr_exportformask
 from .operators.set_vertex_color import lr_assign_vertex_color,lr_offset_vertex_color,lr_pick_vertex_color
@@ -135,11 +136,6 @@ def unregister_keymaps():
 # Is assigned by pointer property below in class registration.
 
 
-# def execute_hide_operator(self, context):
-#     eval('bpy.ops.' + self.hide_objs + '()')
-# def execute_unhide_operator(self, context):
-#     eval('bpy.ops.' + self.unhide_objs + '()')
-
 
 class lr_tool_settings(bpy.types.PropertyGroup):
     uv_map_new_name: bpy.props.StringProperty(name="  Name", description="Name of the new UV set on selected", default="Bake", maxlen=1024,)
@@ -151,6 +147,9 @@ class lr_tool_settings(bpy.types.PropertyGroup):
     vertex_color_offset_amount: bpy.props.FloatProperty(name="Offset amount", default=0.1, min = 0, max = 1)
     lr_vc_swatch: FloatVectorProperty(name="object_color",subtype='COLOR',default=(1.0, 1.0, 1.0),min=0.0, max=1.0,description="color picker")
     lr_vc_alpha_swatch: bpy.props.FloatProperty(name="Alpha Value", step = 5, default=0.5, min = 0, max = 1)
+
+    hide_by_name: bpy.props.StringProperty(name="", description="Hide objects with this name", default="_UCX", maxlen=1024,)
+    unhide_by_name: bpy.props.StringProperty(name="", description="Unhide objects with this name", default="_UCX", maxlen=1024,)
     
 
     # # Enum for hiding and unhiding objects
@@ -343,51 +342,24 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
         # layout.prop(lr_tools, "unhide_objs")
 
 
-        row = layout.column_flow(columns=2,align=True)
+        row = layout.row(align=True)
 
 
+        op = row.operator("object.lr_hide_object", text="Hide", icon = 'HIDE_ON')
+        op.name = lr_tools.hide_by_name
+        op.hide = True
 
-        # op = row.operator("object.lr_hide_object", text="UCX_", icon = 'HIDE_ON')
-        # op.name = 'UCX_'
-        # op.hide = True
+        row.prop(lr_tools, "hide_by_name",icon_only=False)
         
-        # op = row.operator("object.lr_hide_object", text="_HP", icon = 'HIDE_ON')
-        # op.name = '_HP'
-        # op.hide = True
-
-        # op = row.operator("object.lr_hide_object", text="_LP", icon = 'HIDE_ON')
-        # op.name = '_LP'
-        # op.hide = True
-
-        # op = row.operator("object.lr_hide_object", text="_CAGE", icon = 'HIDE_ON')
-        # op.name = '_CAGE'
-        # op.hide = True
-
-        # op = row.operator("object.lr_hide_unhide_lattice", text="Lattice", icon = 'HIDE_ON')
-        # op.hide_lattice = True
 
 
 
 
-        
-        # op = row.operator("object.lr_hide_object", text="UCX_", icon ='HIDE_OFF')
-        # op.name = 'UCX_'
-        # op.hide = False
-        
-        # op = row.operator("object.lr_hide_object", text="_HP", icon ='HIDE_OFF')
-        # op.name = '_HP'
-        # op.hide = False
-
-        # op = row.operator("object.lr_hide_object", text="_LP", icon ='HIDE_OFF')
-        # op.name = '_LP'
-        # op.hide = False
-
-        # op = row.operator("object.lr_hide_object", text="_CAGE", icon = 'HIDE_OFF')
-        # op.name = '_CAGE'
-        # op.hide = False
-
-        # op = row.operator("object.lr_hide_unhide_lattice", text="Lattice", icon = 'HIDE_OFF')
-        # op.hide_lattice = False
+        row = layout.row(align=True)
+        op = row.operator("object.lr_hide_object", text="Unhide", icon ='HIDE_OFF')
+        op.name = lr_tools.unhide_by_name
+        op.hide = False
+        row.prop(lr_tools, "unhide_by_name",icon_only=False)
 
 
         row = layout.column_flow(columns=2,align=True)
