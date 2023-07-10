@@ -148,8 +148,8 @@ class lr_tool_settings(bpy.types.PropertyGroup):
     lr_vc_swatch: FloatVectorProperty(name="object_color",subtype='COLOR',default=(1.0, 1.0, 1.0),min=0.0, max=1.0,description="color picker")
     lr_vc_alpha_swatch: bpy.props.FloatProperty(name="Alpha Value", step = 5, default=0.5, min = 0, max = 1)
 
-    hide_by_name: bpy.props.StringProperty(name="", description="Hide objects with this name", default="_UCX", maxlen=1024,)
-    unhide_by_name: bpy.props.StringProperty(name="", description="Unhide objects with this name", default="_UCX", maxlen=1024,)
+    hide_by_name: bpy.props.StringProperty(name="", description="Hide objects with this name", default="UCX_", maxlen=1024,)
+    unhide_by_name: bpy.props.StringProperty(name="", description="Unhide objects with this name", default="UCX", maxlen=1024,)
     
 
     # # Enum for hiding and unhiding objects
