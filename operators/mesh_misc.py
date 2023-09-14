@@ -42,7 +42,6 @@ class MESH_OT_getEdgesLength(bpy.types.Operator):
         return {'FINISHED'}	    
 
 
-
 class OBJECT_OT_hide_by_name(bpy.types.Operator):
     bl_idname = "object.lr_hide_object"
     bl_label = "Hides/Unhides object by name"
@@ -90,7 +89,6 @@ class OBJECT_OT_hide_wire_objects(bpy.types.Operator):
         return {'FINISHED'}		
 
 
-
 class OBJECT_OT_hide_subsurf_modifier(bpy.types.Operator):
     bl_idname = "object.lr_hide_subd_modifier"
     bl_label = "Hides/Unhides subd modifier on selected objects."
@@ -111,7 +109,6 @@ class OBJECT_OT_hide_subsurf_modifier(bpy.types.Operator):
                         modifier.show_viewport = not self.hide_subsurf
 
         return {'FINISHED'}	    
-
 
 
 class OBJECT_OT_lr_set_collection_offset_from_empty(bpy.types.Operator):
@@ -142,9 +139,6 @@ class OBJECT_OT_lr_set_collection_offset_from_empty(bpy.types.Operator):
         return {'FINISHED'}		
 
 
-
-
-
 class OBJECT_OT_material_slot_remove_unused_on_selected(bpy.types.Operator):
     '''Removes unused material slots on all selected objects. Same as blender default operator but works with multiple object selection'''
     bl_idname = "object.material_slot_remove_unused_on_selected"
@@ -160,7 +154,6 @@ class OBJECT_OT_material_slot_remove_unused_on_selected(bpy.types.Operator):
             if obj.type == 'MESH':
                 bpy.ops.object.material_slot_remove_unused()
         return {'FINISHED'}		
-
 
 
 class OBJECT_OT_lr_material_cleanup(bpy.types.Operator):
@@ -197,28 +190,6 @@ class OBJECT_OT_lr_material_cleanup(bpy.types.Operator):
 
 
         return {'FINISHED'}		
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -372,7 +343,6 @@ class OBJECT_OT_lr_assign_checker(bpy.types.Operator):
             pass
 
         return {'FINISHED'}
-
 
 
 class OBJECT_OT_lr_remove_checker(bpy.types.Operator):

@@ -200,9 +200,10 @@ class OBJECT_OT_remove_uv_by_index(bpy.types.Operator):
 			if  uv_amount >= self.uv_index:
 				#UVIndex = obj.uv_layers[self.uv_index]
 				obj.uv_layers.remove(obj.uv_layers[self.uv_index-1])
-			else:
-				pass
-			
+
+
+		bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1) #Redraw UI
+
 		return {'FINISHED'}		
 
 
@@ -353,7 +354,7 @@ class move_uv_map_up(bpy.types.Operator):
 				#Set active index
 				objdata.uv_layers.active_index = up_index
 			else:
-			    print('skipping')
+				pass
 
 		act_index = objdata[0].uv_layers.active_index
 		for i in objdata:
@@ -395,38 +396,38 @@ class move_uv_map_down(bpy.types.Operator):
 
 		def move_down(objdata):
 
-		    act_index = objdata.uv_layers.active_index
-		    if act_index < len(objdata.uv_layers)-1:
-		        act_index_name = objdata.uv_layers.active.name
-		        down_index = act_index+1
-		        name_down = objdata.uv_layers[act_index+1].name
+			act_index = objdata.uv_layers.active_index
+			if act_index < len(objdata.uv_layers)-1:
+				act_index_name = objdata.uv_layers.active.name
+				down_index = act_index+1
+				name_down = objdata.uv_layers[act_index+1].name
 
-		        bm = bmesh.new()
-		        bm.from_mesh(objdata)
-		        bm.loops.layers.uv.new('temp')
+				bm = bmesh.new()
+				bm.from_mesh(objdata)
+				bm.loops.layers.uv.new('temp')
 
-		        bm.loops.layers.uv['temp'].copy_from(bm.loops.layers.uv[name_down])
-		        bm.loops.layers.uv[name_down].copy_from(bm.loops.layers.uv[act_index_name])
-		        bm.loops.layers.uv[act_index_name].copy_from(bm.loops.layers.uv['temp'])
+				bm.loops.layers.uv['temp'].copy_from(bm.loops.layers.uv[name_down])
+				bm.loops.layers.uv[name_down].copy_from(bm.loops.layers.uv[act_index_name])
+				bm.loops.layers.uv[act_index_name].copy_from(bm.loops.layers.uv['temp'])
 
 
 
-		        bm.to_mesh(objdata)
-		        #Update data
-		        objdata.update()
+				bm.to_mesh(objdata)
+				#Update data
+				objdata.update()
 
-		        #switch names
-		        objdata.uv_layers[down_index].name = 'temp_up'
-		        objdata.uv_layers[act_index].name = name_down
-		        objdata.uv_layers[down_index].name = act_index_name
-		        #Remove temp
-		        objdata.uv_layers.remove(objdata.uv_layers['temp'])
-		        #Set active index
-		        objdata.uv_layers.active_index = down_index
-		    else:
-		        print('skipping')  
-		
-		 
+				#switch names
+				objdata.uv_layers[down_index].name = 'temp_up'
+				objdata.uv_layers[act_index].name = name_down
+				objdata.uv_layers[down_index].name = act_index_name
+				#Remove temp
+				objdata.uv_layers.remove(objdata.uv_layers['temp'])
+				#Set active index
+				objdata.uv_layers.active_index = down_index
+			else:
+				print('skipping')  
+
+			
 		act_index = objdata[0].uv_layers.active_index
 		for i in objdata:
 			if	len(i.uv_layers) != 1:

@@ -22,11 +22,11 @@ bl_info = {
     "category" : "UV"
 }
 
-import bpy, os, bmesh
+import bpy, os, bmesh, subprocess
 
 
 from .operators.unwrap_in_place import LR_Unwrap
-from .operators.export import lr_export_but_one_material,lr_exportformask
+# from .operators.export import lr_export_but_one_material,lr_exportformask
 from .operators.set_vertex_color import lr_assign_vertex_color,lr_offset_vertex_color,lr_pick_vertex_color
 from .operators.set_vertex_alpha import lr_vertex_rgb_to_alpha
 from .operators.select import lr_select_obj_by_topology,lr_deselect_duplicate
@@ -392,14 +392,10 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
 
 
 
-        layout = self.layout.box()
-        layout.label(text="Export")
-        layout.operator("object.lr_export_but_one_material", text="With one material", icon='EXPORT')
-        layout.operator("object.lr_exportformask", text="With one material and one specified UVSet", icon='EXPORT')
-
-
-
-
+        # layout = self.layout.box()
+        # layout.label(text="Export")
+        # layout.operator("object.lr_export_but_one_material", text="With one material", icon='EXPORT')
+        # layout.operator("object.lr_exportformask", text="With one material and one specified UVSet", icon='EXPORT')
 
 
 
@@ -511,13 +507,33 @@ class VIEW3D_PT_lr_uv(bpy.types.Panel):
         c_row.prop(lr_tools, "remove_uv_index",icon_only=True)
 
 
+class OPN_OT_open_folder(Operator):
+    """Opens Current Folder"""
+    bl_idname = "window.open_path"
+    bl_label = "Open Current .blend Path"
+    bl_description = "Opens Current .blend Path"
+    bl_space_type =  "Window"
+    bl_region_type = "UI"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        full_path = bpy.path.abspath("//")
+        subprocess.Popen('explorer "{0}"'.format(full_path))
+        
+        return {'FINISHED'}
+
+def menu_func(self, context):
+    self.layout.operator(OPN_OT_open_folder.bl_idname)
+ 
+
 #UI End ---------------------------------------------------------------------------------
 classes = (AddonPreferences,
             lr_tool_settings,
             # window_management.WINDOW_OT_lr_window_popup,
-            lr_exportformask,
+            # lr_exportformask,             #Moved to LR Export Addon
+            # lr_export_but_one_material,   #Moved to LR Export Addon
+            OPN_OT_open_folder,
             LR_Unwrap,
-            lr_export_but_one_material,
             lr_assign_vertex_color,
             lr_offset_vertex_color,
             lr_vertex_rgb_to_alpha,
@@ -557,7 +573,6 @@ classes = (AddonPreferences,
             VIEW3D_PT_lr_mesh,
             VIEW3D_PT_lr_uv,
             VIEW3D_PT_lr_object,
-
             OBJECT_OT_lr_drop_object,
             #VIEW3D_PT_lr_ucx
             )
@@ -640,7 +655,7 @@ def lr_palette(scene):
 def register():
     #needs handlers to get scene acess, othervise not working
     bpy.app.handlers.load_post.append(lr_palette)
-    
+    bpy.types.TOPBAR_MT_file.append(menu_func) #For opening filepath in explorer
     
     for cls in classes:
         bpy.utils.register_class(cls)
@@ -652,6 +667,7 @@ def register():
 
 def unregister():
     bpy.app.handlers.load_post.remove(lr_palette)
+    bpy.types.TOPBAR_MT_file.remove(menu_func) #For opening filepath in explorer
     for cls in classes:
         bpy.utils.unregister_class(cls)
     del bpy.types.Scene.lr_tools

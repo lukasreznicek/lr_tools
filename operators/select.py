@@ -20,8 +20,6 @@ class lr_select_obj_by_topology(bpy.types.Operator):
     )
 
 
-
-
     def execute(self, context):
 
 
@@ -74,11 +72,7 @@ class lr_select_obj_by_topology(bpy.types.Operator):
         for i in range(len(meshwithsamevertcount)):
         
             if compareobjs(meshwithsamevertcount[i], activeobj, self.threshold) is True:
-                meshwithsamevertcount[i].select_set(True)
-
-        return {'FINISHED'}	   
-    
-
+                meshwithsamevertcount[i]
 
 class lr_deselect_duplicate(bpy.types.Operator):
     '''Deselects all but one instance'''
