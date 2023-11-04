@@ -138,8 +138,8 @@ def unregister_keymaps():
 
 
 class lr_tool_settings(bpy.types.PropertyGroup):
-    uv_map_new_name: bpy.props.StringProperty(name="  Name", description="Name of the new UV set on selected", default="Bake", maxlen=1024,)
-    name_to_uv_index_set: bpy.props.StringProperty(name="  Name", description="Set uv index by name", default="UVMap Name", maxlen=1024,)
+    uv_map_new_name: bpy.props.StringProperty(name="  Name", description="Name of the new UV set on selected", default="UVMask", maxlen=1024,)
+    name_to_uv_index_set: bpy.props.StringProperty(name="  Name", description="Set uv index by name", default="UVMask", maxlen=1024,)
     uv_map_rename: bpy.props.StringProperty(name="  To", description="Rename uv on selected objects", default="New Name", maxlen=1024,)
     uv_map_delete_by_name: bpy.props.StringProperty(name="  Name", description="Name of the UV Map to delete on selected objects", default="UV Name", maxlen=1024,)
     select_uv_index: bpy.props.IntProperty(name="  Index", description="UV Map index to set active on selected objects", default=1, min = 1, soft_max = 5)
@@ -246,11 +246,11 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
 
 
 
-        #Offset operators
-        column_row = column.row(align=True)
-        column_row.operator("lr.offset_vertex_color", icon='TRIA_DOWN', text="").invert = True
-        column_row.operator("lr.offset_vertex_color", icon='TRIA_UP', text="").invert = False
-        column_row.prop(context.scene.lr_tools,'vertex_color_offset_amount')
+        # #Offset operators
+        # column_row = column.row(align=True)
+        # column_row.operator("lr.offset_vertex_color", icon='TRIA_DOWN', text="").invert = True
+        # column_row.operator("lr.offset_vertex_color", icon='TRIA_UP', text="").invert = False
+        # column_row.prop(context.scene.lr_tools,'vertex_color_offset_amount')
         
 
         
@@ -417,7 +417,7 @@ class VIEW3D_PT_lr_mesh(bpy.types.Panel):
         row.operator("mesh.lr_get_edges_length", text="Get edges length", icon = 'MOD_LENGTH')
 
 
-
+'''
 class VIEW3D_PT_lr_uv(bpy.types.Panel):
     bl_idname = "OBJECT_PT_lr_uv"
     bl_label = "UV"
@@ -507,6 +507,197 @@ class VIEW3D_PT_lr_uv(bpy.types.Panel):
         c_row.prop(lr_tools, "remove_uv_index",icon_only=True)
 
 
+class VIEW3D_PT_lr_uv(bpy.types.Panel):
+    bl_label = "UV Control"
+    bl_idname = "OBJECT_PT_lr_uv"
+    bl_parent_id = "DATA_PT_uv_texture"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+    bl_category = "LR"
+    #	bl_context = "object"
+
+    def draw(self, context):
+
+        layout = self.layout.box() #UV Select
+
+        layout.label(text="UV Select")
+        row = layout.row(align=True)
+        lr_tools = context.scene.lr_tools
+
+        set_index1 = row.operator("object.lr_uv_map_by_index", text="UV 1", icon = 'PASTEDOWN')
+        set_index1.uv_index=1
+
+        set_index2 = row.operator("object.lr_uv_map_by_index", text="UV 2", icon = 'PASTEDOWN')
+        set_index2.uv_index=2
+
+        set_index3 = row.operator("object.lr_uv_map_by_index", text="UV 3", icon = 'PASTEDOWN')
+        set_index3.uv_index=3
+
+        row = layout.row(align=True)
+        row.operator("object.lr_uv_map_by_index_custom", text="Set UV index: ", icon = 'PASTEDOWN')
+        row.scale_x = 0.3
+        row.prop(lr_tools, "select_uv_index",icon_only=True)
+        
+        row = layout.row(align=True)
+        row.operator("object.lr_uv_index_name", text="Set UV name: ", icon = 'PASTEDOWN')
+        row.prop(lr_tools, "name_to_uv_index_set",icon_only=True)
+
+        layout.row().separator()
+
+
+        layout = self.layout.box()  #UV Create
+        layout.label(text="UV Add & Remove")
+
+        row = layout.row(align=True)
+        row.operator("object.lr_new_uv_set", text="New UV:", icon='PRESET_NEW')
+        row.prop(lr_tools, "uv_map_new_name",icon_only=True)
+
+        col = layout.column(align=True)
+        c_row = col.row(align=True)
+        c_row.operator("object.lr_remove_uv_by_name", text="Remove:", icon ='REMOVE')
+        c_row.prop(lr_tools, "uv_map_delete_by_name",icon_only=True)
+        col.operator("object.lr_remove_active_uv_set", text="Remove active", icon ='REMOVE')
+
+
+        layout = self.layout.box() #UV Rename
+        layout.label(text="UV Rename")
+        
+        row = layout.row(align=True)
+        row.operator("object.lr_rename_active_uv_set", text="Rename:", icon ='FILE_TEXT')
+        row.prop(lr_tools, "uv_map_rename",icon_only=True)
+
+        layout = self.layout.box() #UV Move
+        layout.label(text="UV Move")
+        
+        row = layout.row(align=True)
+        row.operator("object.mono_move_uv_map_up", text="Move Up", icon='TRIA_UP')
+        row.operator("object.mono_move_uv_map_down", text="Move Down", icon = 'TRIA_DOWN')
+       
+        c_row = col.row(align=True)
+        op = c_row.operator("object.lr_remove_uv_set_by_index", text="Remove UV index: ", icon = 'PASTEDOWN')
+        op.uv_index = bpy.data.scenes['Scene'].lr_tools.remove_uv_index
+        c_row.scale_x = 0.3
+        c_row.prop(lr_tools, "remove_uv_index",icon_only=True)
+'''
+
+class VIEW3D_PT_lr_select_uv(bpy.types.Panel):
+    bl_label = "Select"
+    bl_idname = "OBJECT_PT_lr_select_uv"
+    bl_parent_id = "DATA_PT_uv_texture"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+    bl_category = "LR"
+    # bl_options = {'DEFAULT_CLOSED'}
+    def draw(self, context):
+        
+        # layout = self.layout.box() #UV Select
+        layout = self.layout
+        lr_tools = context.scene.lr_tools
+        # layout.label(text="UV Select")
+        
+        row = layout.row(align=True)
+        row.scale_y = 1.5
+        set_index1 = row.operator("object.lr_uv_map_by_index", text="UV 1", icon = 'PASTEDOWN')
+        set_index1.uv_index=1
+        
+
+        set_index2 = row.operator("object.lr_uv_map_by_index", text="UV 2", icon = 'PASTEDOWN')
+        set_index2.uv_index=2
+
+        set_index3 = row.operator("object.lr_uv_map_by_index", text="UV 3", icon = 'PASTEDOWN')
+        set_index3.uv_index=3
+
+        
+        row = layout.row(align=True)
+        row.operator("object.lr_uv_map_by_index_custom", text="Set UV index: ", icon = 'PASTEDOWN')
+        row.scale_x = 0.3
+        row.prop(lr_tools, "select_uv_index",icon_only=True)
+        
+        
+        row = layout.row(align=True)
+        row.operator("object.lr_uv_index_name", text="Set UV Name: ", icon = 'PASTEDOWN')
+        row.prop(lr_tools, "name_to_uv_index_set",icon_only=True)
+
+
+
+class VIEW3D_PT_lr_move_uv(bpy.types.Panel):
+    bl_label = "Move"
+    bl_idname = "OBJECT_PT_lr_uv"
+    bl_parent_id = "DATA_PT_uv_texture"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+    bl_category = "LR"
+    #	bl_context = "object"
+    bl_options = {'DEFAULT_CLOSED'}
+    def draw(self, context):
+        
+        layout = self.layout #UV Move
+        lr_tools = context.scene.lr_tools
+        # layout.label(text="UV Move")
+        
+        row = layout.row(align=True)
+        row.operator("object.mono_move_uv_map_up", text="Move Up", icon='TRIA_UP')
+        row.operator("object.mono_move_uv_map_down", text="Move Down", icon = 'TRIA_DOWN')
+       
+        c_row = col.row(align=True)
+        op = c_row.operator("object.lr_remove_uv_set_by_index", text="Remove UV index: ", icon = 'PASTEDOWN')
+        op.uv_index = bpy.data.scenes['Scene'].lr_tools.remove_uv_index
+        c_row.scale_x = 0.3
+        c_row.prop(lr_tools, "remove_uv_index",icon_only=True)
+
+
+class VIEW3D_PT_lr_rename_uv(bpy.types.Panel):
+    bl_label = "Rename"
+    bl_idname = "OBJECT_PT_lr_rename_uv"
+    bl_parent_id = "DATA_PT_uv_texture"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+    bl_category = "LR"
+    #	bl_context = "object"
+    bl_options = {'DEFAULT_CLOSED'}
+    def draw(self, context):
+        layout = self.layout #UV Move
+        lr_tools = context.scene.lr_tools
+        # layout.label(text="UV Rename")
+        
+        row = layout.row(align=True)
+        row.operator("object.lr_rename_active_uv_set", text="Rename:", icon ='FILE_TEXT')
+        row.prop(lr_tools, "uv_map_rename",icon_only=True)
+
+
+class VIEW3D_PT_lr_add_remove_uv(bpy.types.Panel):
+    bl_label = "Add & Remove"
+    bl_idname = "OBJECT_PT_lr_add_remove_uv"
+    bl_parent_id = "DATA_PT_uv_texture"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "data"
+    bl_category = "LR"
+    #	bl_context = "object"
+    bl_options = {'DEFAULT_CLOSED'}
+    def draw(self, context):
+        layout = self.layout  #UV Create
+        lr_tools = context.scene.lr_tools
+        # layout.label(text="UV Add & Remove")
+
+        row = layout.row(align=True)
+        row.operator("object.lr_new_uv_set", text="New UV:", icon='PRESET_NEW')
+        row.prop(lr_tools, "uv_map_new_name",icon_only=True)
+
+        col = layout.column(align=True)
+        col.operator("object.lr_remove_active_uv_set", text="Remove Active", icon ='REMOVE')
+        c_row = col.row(align=True)
+        c_row.operator("object.lr_remove_uv_by_name", text="Remove:", icon ='REMOVE')
+        c_row.prop(lr_tools, "uv_map_delete_by_name",icon_only=True)
+        
+        
+
+
+
 class OPN_OT_open_folder(Operator):
     """Opens Current Folder"""
     bl_idname = "window.open_path"
@@ -566,12 +757,19 @@ classes = (AddonPreferences,
             mesh_misc.OBJECT_OT_lr_remove_checker,
             mesh_misc.OBJECT_OT_lr_material_cleanup,
             mesh_misc.OBJECT_OT_lr_set_collection_offset_from_empty,
+            mesh_misc.OBJECT_OT_lr_rebuild,
             lr_pick_vertex_color,
             lr_multires_sculpt_offset,
             lr_deselect_duplicate,
             VIEW3D_PT_lr_vertex,
             VIEW3D_PT_lr_mesh,
-            VIEW3D_PT_lr_uv,
+            # VIEW3D_PT_lr_uv,
+
+            VIEW3D_PT_lr_select_uv,
+            VIEW3D_PT_lr_move_uv,
+            VIEW3D_PT_lr_rename_uv,
+            VIEW3D_PT_lr_add_remove_uv,
+
             VIEW3D_PT_lr_object,
             OBJECT_OT_lr_drop_object,
             #VIEW3D_PT_lr_ucx

@@ -27,38 +27,56 @@ class lr_assign_vertex_color(bpy.types.Operator):
 
         def set_vertex_color(active_object):
             ''' Object needs to be in object mode. '''
-            if len(active_object.data.vertex_colors.values()) == 0:
-                active_object.data.vertex_colors.new()
 
-            color_layer = active_object.data.vertex_colors.active  
+            color_attributes = []
+            #Get color attributes
+            for attr in active_object.data.attributes:  
+                if attr.data_type == 'FLOAT_COLOR' or attr.data_type == 'BYTE_COLOR':
+                    color_attributes.append(attr)
             
+            #Create new attr if not present
+            if len(color_attributes) == 0:
+                active_object.data.attributes.new('VertexColor', 'FLOAT_COLOR', 'CORNER')
+
+            #Get active Color Attribute. Might be replaced by ordinary attribute by Blender later on.
+            active_color_attr = active_object.data.attributes.active_color  #active_color vs active. Latter is attribute
             
+            if active_color_attr == None:
+                self.report({'WARNING'}, "Select Color Attribute.")
+            
+            if active_color_attr.domain != 'CORNER':
+                self.report({'WARNING'}, "Convert Color Attribute from Vertex to Face Corner.")
+                return {'FINISHED'}
+
+            def apply_vertex_color(r,g,b): #Going over all loops and checking if vertex is selected. Not possible to get loops from vertex. 
+
+                for loop in active_object.data.loops:
+                    vert_index = loop.vertex_index
+                    loop_index = loop.index
+
+                    if active_object.data.vertices[vert_index].select:
+                        
+                        alpha_value = active_color_attr.data[loop_index].color[3]
+                        active_color_attr.data[loop_index].color = (r,g,b,alpha_value)
+
+            def apply_face_color(r,g,b):
+                for i in active_object.data.polygons:
+                    if i.select:
+
+                        for j in i.loop_indices:
+                            alpha_value = active_color_attr.data[j].color[3]
+                            active_color_attr.data[j].color = (r,g,b,alpha_value)
+
+
+
             if bpy.context.tool_settings.mesh_select_mode[0]:
                 selection_mode = 0
             if bpy.context.tool_settings.mesh_select_mode[1]:
                 selection_mode = 1
             if bpy.context.tool_settings.mesh_select_mode[2]:
                 selection_mode = 2
-
-
-            def apply_vertex_color(r,g,b):
-                for i in active_object.data.loops:
-                    numb = i.vertex_index
-                    index = i.index
-                    
-                    if active_object.data.vertices[numb].select:
-                        alpha_value = color_layer.data[index].color[3]
-                        color_layer.data[index].color = (r,g,b,alpha_value)
-                
-            def apply_face_color(r,g,b):
-                for i in active_object.data.polygons:
-                    if i.select:
-
-                        for j in i.loop_indices:
-                            alpha_value = color_layer.data[j].color[3]
-                            color_layer.data[j].color = (r,g,b,alpha_value)
-
-
+                            
+            
             if selection_mode == 0:
                 apply_vertex_color(self.set_r,self.set_g,self.set_b)
 
@@ -71,10 +89,8 @@ class lr_assign_vertex_color(bpy.types.Operator):
             else:
                 self.report({'ERROR'}, "Incorrect selection mode.")
 
-        active_and_selected_obj = bpy.context.selected_objects
-        active_and_selected_obj.append(bpy.context.object)
-        for object in active_and_selected_obj:
-            
+
+        for object in bpy.context.selected_objects:
             if object.type == 'MESH':
                 set_vertex_color(object)
 
@@ -82,7 +98,7 @@ class lr_assign_vertex_color(bpy.types.Operator):
         bpy.ops.object.mode_set(mode=mode_store)
 
 
-        return {'FINISHED'}
+        return {'FINISHED'} 
 
 
 class lr_offset_vertex_color(bpy.types.Operator):

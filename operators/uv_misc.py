@@ -174,6 +174,7 @@ class RemoveActiveUVSet(bpy.types.Operator):
 				
 		return {'FINISHED'}		
 
+
 class OBJECT_OT_remove_uv_by_index(bpy.types.Operator):
 	'''Remove UV Set by index. Index starts from 1.'''
 	bl_idname = "object.lr_remove_uv_set_by_index"
@@ -205,7 +206,6 @@ class OBJECT_OT_remove_uv_by_index(bpy.types.Operator):
 		bpy.ops.wm.redraw_timer(type='DRAW_WIN_SWAP', iterations=1) #Redraw UI
 
 		return {'FINISHED'}		
-
 
 
 class RenameActiveUVSet(bpy.types.Operator):
@@ -470,8 +470,6 @@ class lr_remove_uv_by_name(bpy.types.Operator):
 
 
 
-
-
 class lr_randomize_uv_offset(bpy.types.Operator):
 	'''UVWarp modifier offset randomizator. Modifier must be named UVWarp_S. Select objects and run.'''
 	bl_idname = "object.lr_randomize_uv_offset"
@@ -505,8 +503,6 @@ class lr_randomize_uv_offset(bpy.types.Operator):
 					count +=1
 					
 		return {'FINISHED'}	
-
-
 
 
 

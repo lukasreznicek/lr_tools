@@ -29,10 +29,45 @@ class lr_vertex_rgb_to_alpha(bpy.types.Operator):
         def set_alpha_color(active_object):
             #active_object = bpy.context.active_object
 
-            if len(active_object.data.vertex_colors.items()) == 0:
-                active_object.data.vertex_colors.new()
+            color_attributes = []
+            #Get color attributes
+            for attr in active_object.data.attributes:  
+                if attr.data_type == 'FLOAT_COLOR' or attr.data_type == 'BYTE_COLOR':
+                    color_attributes.append(attr)
             
-            color_layer = active_object.data.vertex_colors.active  
+            #Create new attr if not present
+            if len(color_attributes) == 0:
+                active_object.data.attributes.new('VertexColor', 'FLOAT_COLOR', 'CORNER')
+
+            #Get active Color Attribute. Might be replaced by ordinary attribute by Blender later on.
+            active_color_attr = active_object.data.attributes.active_color  #active_color vs active. Latter is attribute
+            
+            if active_color_attr == None:
+                self.report({'WARNING'}, "Select Color Attribute.")
+            
+            if active_color_attr.domain != 'CORNER':
+                self.report({'WARNING'}, "Convert Color Attribute from Vertex to Face Corner.")
+                return {'FINISHED'}
+
+
+            def apply_vertex_alpha(a):
+                for i in active_object.data.loops:
+                    numb = i.vertex_index
+                    index = i.index
+                    
+                    if active_object.data.vertices[numb].select:
+                        active_color_attr.data[index].color[3] = a
+
+                self.report({'INFO'}, 'Alpha set: '+ str(round(a, 2)))
+                
+            def apply_face_alpha(a):
+                for i in active_object.data.polygons:
+                    if i.select:
+
+                        for j in i.loop_indices:
+                            active_color_attr.data[j].color[3] = a
+
+                self.report({'INFO'}, 'Alpha set: '+ str(round(a, 2)))
 
 
 
@@ -42,31 +77,6 @@ class lr_vertex_rgb_to_alpha(bpy.types.Operator):
                 selection_mode = 1
             if bpy.context.tool_settings.mesh_select_mode[2]:
                 selection_mode = 2
-
-
-            def apply_vertex_alpha(a):
-                for i in active_object.data.loops:
-                    numb = i.vertex_index
-                    index = i.index
-                    
-                    if active_object.data.vertices[numb].select:
-
-                        r_value = color_layer.data[index].color[0]
-                        g_value = color_layer.data[index].color[1]
-                        b_value = color_layer.data[index].color[2]
-                        color_layer.data[index].color = (r_value,g_value,b_value,a)
-                self.report({'INFO'}, 'Alpha set: '+ str(round(a, 2)))
-                
-            def apply_face_alpha(a):
-                for i in active_object.data.polygons:
-                    if i.select:
-
-                        for j in i.loop_indices:
-                            r_value = color_layer.data[j].color[0]
-                            g_value = color_layer.data[j].color[1]
-                            b_value = color_layer.data[j].color[2]
-                            color_layer.data[j].color = (r_value,g_value,b_value,a)
-                self.report({'INFO'}, 'Alpha set: '+ str(round(a, 2)))
 
             if selection_mode == 0:
                 apply_vertex_alpha(self.set_a)
@@ -82,9 +92,7 @@ class lr_vertex_rgb_to_alpha(bpy.types.Operator):
                 #self.report({'ERROR'}, "Incorrect selection mode.")
 
 
-        active_and_selected_obj = bpy.context.selected_objects
-        active_and_selected_obj.append(bpy.context.object)
-        for object in active_and_selected_obj:
+        for object in bpy.context.selected_objects:
             if object.type == 'MESH':
                 set_alpha_color(object)
 
