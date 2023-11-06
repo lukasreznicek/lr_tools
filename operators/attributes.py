@@ -2,6 +2,7 @@ import bpy
 
 
 class OBJECT_OT_lr_add_attribute(bpy.types.Operator):
+    '''Adds a new attribute to all selected objects'''
     bl_idname = "geometry.lr_add_attribute"
     bl_label = "Adds attribute on selected objects"
     bl_options = {'REGISTER', 'UNDO'}
@@ -53,22 +54,25 @@ class OBJECT_OT_lr_add_attribute(bpy.types.Operator):
         return wm.invoke_props_dialog(self)
 
     def execute(self, context):
+        count = 0
         for obj in bpy.context.selected_objects:
             if obj.type == 'MESH' or obj.type == 'CURVE' or obj.type == 'EMPTY':
 
                 if obj.data.attributes.get(self.name) == None: #Check if attribute is already present.
+                    count+=1
                     obj.data.attributes.new(name=self.name,
                                             type=self.data_type,
                                             domain=self.domain)
         
 
-        # self.report({'INFO'}, f'Updated {num} objects.')
+        self.report({'INFO'}, f'Attribute added  to {count} objects.')
         return {'FINISHED'}		
 
 
 
 
 class OBJECT_OT_lr_remove_attribute(bpy.types.Operator):
+    '''Removes an attribute from all selected objects'''
     bl_idname = "geometry.lr_remove_attribute"
     bl_label = "Removes attribute on selected objects"
     bl_options = {'REGISTER', 'UNDO'}
