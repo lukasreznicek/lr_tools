@@ -2,30 +2,51 @@ import bpy
 
 
 
-class lr_assign_vertex_color(bpy.types.Operator):
+class OBJECT_OT_lr_assign_vertex_color(bpy.types.Operator):
     """Assigns color to selected vertex or face."""
     bl_idname = "lr.assign_vertex_color"
     bl_label = "Assigns color to selected vertex or face."
     bl_options = {'REGISTER', 'UNDO'}
 
 
-    set_r: bpy.props.FloatProperty(name = 'R',description = 'Red',default = 1.0,min = 0,soft_max = 1,)
-    set_g: bpy.props.FloatProperty(name = 'G', description = 'Green', default = 1.0, min = 0, soft_max = 1,)
-    set_b: bpy.props.FloatProperty(name = 'B', description = 'Blue', default = 1.0, min = 0, soft_max = 1,)
+    def update_int_from_float(self, context):
+        self['color_r_int'] = int(round(self['color_r'] * 255))
+        self['color_g_int'] = int(round(self['color_g'] * 255))
+        self['color_b_int'] = int(round(self['color_b'] * 255))
+        
+        # print('COLOR  INT: ',self['color_r_int'])
+        # print(f'UPDATING Int because of the change in Float')
+
+
+    def update_float_from_int(self, context):
+        self['color_r'] = self['color_r_int'] / 255
+        self['color_g'] = self['color_g_int'] / 255
+        self['color_b'] = self['color_b_int'] / 255
+        
+        # print('COLOR FLOAT: ',self['color_r'])
+        # print(f'UPDATING Float because of the change in Int')
+        
+    
+    set_r: bpy.props.BoolProperty(name = 'Set Red', description = "False: Red channel won't be affected", default = True)
+    set_g: bpy.props.BoolProperty(name = 'Set Green', description = "False: Green channel won't be affected", default = True)
+    set_b: bpy.props.BoolProperty(name = 'Set Blue', description = "False: Blue channel won't be affected", default = True)
+
+    color_r: bpy.props.FloatProperty(name = 'R (0-1): ',description = 'Red',min = 0, soft_max=1,default=1, update = update_int_from_float)
+    color_g: bpy.props.FloatProperty(name = 'G (0-1): ' , description = 'Green',min = 0, soft_max = 1,default=1, update = update_int_from_float)
+    color_b: bpy.props.FloatProperty(name = 'B (0-1): ', description = 'Blue', min = 0, soft_max = 1,default=1, update = update_int_from_float)    
+
+    color_r_int: bpy.props.IntProperty(name = 'R (0-255): ',description = 'Red', default = 255,min = 0, soft_max=255, update = update_float_from_int)
+    color_g_int: bpy.props.IntProperty(name = 'G (0-255): ', description = 'Green', default = 255, min = 0, max = 255, update = update_float_from_int)
+    color_b_int: bpy.props.IntProperty(name = 'B (0-255): ', description = 'Blue', default = 255, min = 0, max = 255, update = update_float_from_int)
 
     
-    
-    # @classmethod
-    # def poll(cls, context):
-    #     return context.mode == 'EDIT_MESH'
-
 
     def execute(self, context):
 
         mode_store = bpy.context.object.mode
         bpy.ops.object.mode_set(mode='OBJECT')
 
-        def set_vertex_color(active_object):
+        def set_vertex_color(active_object, set_r = True, set_g = True, set_b = True):
             ''' Object needs to be in object mode. '''
 
             color_attributes = []
@@ -43,6 +64,7 @@ class lr_assign_vertex_color(bpy.types.Operator):
             
             if active_color_attr == None:
                 self.report({'WARNING'}, "Select Color Attribute.")
+                return {'FINISHED'}
             
             if active_color_attr.domain != 'CORNER':
                 self.report({'WARNING'}, "Convert Color Attribute from Vertex to Face Corner.")
@@ -50,23 +72,36 @@ class lr_assign_vertex_color(bpy.types.Operator):
 
             def apply_vertex_color(r,g,b): #Going over all loops and checking if vertex is selected. Not possible to get loops from vertex. 
 
-                for loop in active_object.data.loops:
+                for loop in active_object.data.loops: #BMesh version would be better. BMesh can reitrive connected loops to a vertex.
                     vert_index = loop.vertex_index
                     loop_index = loop.index
 
-                    if active_object.data.vertices[vert_index].select:
+                    if active_object.data.vertices[vert_index].select: #Check if loop belongs to selected vertex
+
+                        if set_r == True:
+                            active_color_attr.data[loop_index].color[0] = r
+
+                        if set_g == True:
+                            active_color_attr.data[loop_index].color[1] = g
                         
-                        alpha_value = active_color_attr.data[loop_index].color[3]
-                        active_color_attr.data[loop_index].color = (r,g,b,alpha_value)
+                        if set_b == True:
+                            active_color_attr.data[loop_index].color[2] = b
+
 
             def apply_face_color(r,g,b):
-                for i in active_object.data.polygons:
-                    if i.select:
+                for polygon in active_object.data.polygons:
+                    
+                    if polygon.select:
+                        for loop_index in polygon.loop_indices:
+                            
+                            if set_r == True:
+                                active_color_attr.data[loop_index].color[0] = r
+                            
+                            if set_g == True:
+                                active_color_attr.data[loop_index].color[1] = g
 
-                        for j in i.loop_indices:
-                            alpha_value = active_color_attr.data[j].color[3]
-                            active_color_attr.data[j].color = (r,g,b,alpha_value)
-
+                            if set_b == True:
+                                active_color_attr.data[loop_index].color[2] = b
 
 
             if bpy.context.tool_settings.mesh_select_mode[0]:
@@ -76,29 +111,63 @@ class lr_assign_vertex_color(bpy.types.Operator):
             if bpy.context.tool_settings.mesh_select_mode[2]:
                 selection_mode = 2
                             
-            
+
             if selection_mode == 0:
-                apply_vertex_color(self.set_r,self.set_g,self.set_b)
+                apply_vertex_color(self.color_r,
+                                   self.color_g,
+                                   self.color_b)
 
             elif selection_mode == 1:
-                apply_vertex_color(self.set_r,self.set_g,self.set_b)
+                apply_vertex_color(self.color_r,
+                                   self.color_g,
+                                   self.color_b)
                 # self.report({'ERROR'}, "Please set selection mode to vertices or faces.")
 
             elif selection_mode == 2:
-                apply_face_color(self.set_r,self.set_g,self.set_b)
+                apply_face_color(self.color_r,
+                                 self.color_g,
+                                 self.color_b)
             else:
                 self.report({'ERROR'}, "Incorrect selection mode.")
 
 
         for object in bpy.context.selected_objects:
             if object.type == 'MESH':
-                set_vertex_color(object)
+                set_vertex_color(object, set_r = self.set_r, set_g = self.set_g, set_b = self.set_b)
 
 
         bpy.ops.object.mode_set(mode=mode_store)
 
 
         return {'FINISHED'} 
+
+    def draw(self, context):
+        
+    
+        # Create a row layout for the boolean properties
+        layout = self.layout
+        row = layout.row(align=True)
+        row.prop(self, 'set_r')
+        row = layout.row(align=True)
+        row.prop(self, 'color_r')
+        row.prop(self, 'color_r_int')
+
+        row = layout.row(align=True)
+        row.prop(self, 'set_g')
+        row = layout.row(align=True)
+        row.prop(self, 'color_g')
+        row.prop(self, 'color_g_int')
+
+        row = layout.row(align=True)
+        row.prop(self, 'set_b')
+        row = layout.row(align=True)
+        row.prop(self, 'color_b')
+        row.prop(self, 'color_b_int')
+
+
+
+
+
 
 
 class lr_offset_vertex_color(bpy.types.Operator):
@@ -274,15 +343,33 @@ class lr_pick_vertex_color(bpy.types.Operator):
         mode_store = active_object.mode
         bpy.ops.object.mode_set(mode='OBJECT')
 
-
+        color_attributes = []
+        #Get color attributes
+        for attr in active_object.data.attributes:  
+            if attr.data_type == 'FLOAT_COLOR' or attr.data_type == 'BYTE_COLOR':
+                color_attributes.append(attr)
         
-        color_layer = active_object.data.vertex_colors.active 
+        #Create new attr if not present
+        if len(color_attributes) == 0:
+            active_object.data.attributes.new('VertexColor', 'FLOAT_COLOR', 'CORNER')
+
+        #Get active Color Attribute. Might be replaced by ordinary attribute by Blender later on.
+        active_color_attr = active_object.data.attributes.active_color  #active_color vs active. Latter is attribute
+        
+        if active_color_attr == None:
+            self.report({'WARNING'}, "Select Color Attribute.")
+            return {'FINISHED'}
+        
+        if active_color_attr.domain != 'CORNER':
+            self.report({'WARNING'}, "Convert Color Attribute from Vertex to Face Corner.")
+            return {'FINISHED'}
+
         active_polygon = active_object.data.polygons[active_object.data.polygons.active]
 
         loop_indices = [i for i in active_polygon.loop_indices]
 
         #collect colors
-        colors = [color_layer.data[i].color for i in loop_indices]
+        colors = [active_color_attr.data[i].color for i in loop_indices]
 
         r = g = b = a = 0
         

@@ -24,10 +24,10 @@ bl_info = {
 
 import bpy, os, bmesh, subprocess
 
-
+from .operators.attributes import OBJECT_OT_lr_add_attribute,OBJECT_OT_lr_remove_attribute
 from .operators.unwrap_in_place import LR_Unwrap
 # from .operators.export import lr_export_but_one_material,lr_exportformask
-from .operators.set_vertex_color import lr_assign_vertex_color,lr_offset_vertex_color,lr_pick_vertex_color
+from .operators.set_vertex_color import OBJECT_OT_lr_assign_vertex_color,lr_offset_vertex_color,lr_pick_vertex_color
 from .operators.set_vertex_alpha import lr_vertex_rgb_to_alpha
 from .operators.select import lr_select_obj_by_topology,lr_deselect_duplicate
 from .operators.replace_children import lr_replace_children
@@ -151,6 +151,10 @@ class lr_tool_settings(bpy.types.PropertyGroup):
     hide_by_name: bpy.props.StringProperty(name="", description="Hide objects with this name", default="UCX_", maxlen=1024,)
     unhide_by_name: bpy.props.StringProperty(name="", description="Unhide objects with this name", default="UCX", maxlen=1024,)
     
+    vc_write_to_red: bpy.props.BoolProperty(name="Set R", description="False: Red channel won't be affected.", default=True)
+    vc_write_to_green: bpy.props.BoolProperty(name="Set G", description="False: Green channel won't be affected.", default=True)
+    vc_write_to_blue: bpy.props.BoolProperty(name="Set B", description="False: Blue channel won't be affected.", default=True)
+
 
     # # Enum for hiding and unhiding objects
     # hide_objs:bpy.props.EnumProperty(
@@ -188,7 +192,7 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
     bl_category = 'LR'
 
     def draw(self, context):
-
+        lr_tools = context.scene.lr_tools
         settings_l = bpy.context.tool_settings.image_paint        
 
         active_brush = settings_l.brush 
@@ -196,8 +200,6 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
 
 
         #Palette colors
-
-        
         if context.mode == 'OBJECT':
             layout3  = self.layout.box()
             layout3.template_ID(settings_l, "palette", new="palette.new")
@@ -207,10 +209,16 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
 
         layout_a = self.layout.box()
         
+
         #Set RGB operators
         column = layout_a.column(align=True)
         column.label(text='RGB')
         
+        row = layout_a.row(align=True)
+        row.prop(lr_tools, "vc_write_to_red")
+        row.prop(lr_tools, "vc_write_to_green")
+        row.prop(lr_tools, "vc_write_to_blue")
+
         column_row = column.row(align=True)
         column_row.prop(active_brush, 'color', text="")
         
@@ -218,31 +226,67 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         rgb_picker.pick_alpha = False
         column = layout_a.column(align=True)
         
+
+        #!!! operator_prop['color_r']  this type of assignment needs to be here because of the property update parameter.Does not trigger property update. 
+        # operator_prop.color_r this assignment will trigger update and it will constantly loop.
+
         column_row = column.row(align=True)
-        column_row_prop = column_row.operator("lr.assign_vertex_color", icon='PASTEDOWN', text="Set RGB")
-        column_row_prop.set_r = active_brush.color[0] 
-        column_row_prop.set_g = active_brush.color[1]
-        column_row_prop.set_b = active_brush.color[2]
-        
-        column_row_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_01', text="")
-        column_row_prop.set_r = 1
-        column_row_prop.set_g = 0
-        column_row_prop.set_b = 0
+        operator_prop = column_row.operator("lr.assign_vertex_color", icon='PASTEDOWN', text="Set Color")
+        operator_prop['color_r'] = active_brush.color[0]
+        operator_prop['color_r_int'] = int(round(active_brush.color[0] * 255))
 
-        column_row_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_04', text="")
-        column_row_prop.set_r = 0
-        column_row_prop.set_g = 1
-        column_row_prop.set_b = 0
+        operator_prop['color_g'] = active_brush.color[1]
+        operator_prop['color_g_int'] = int(round(active_brush.color[1] * 255))
 
-        column_row_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_05', text="")
-        column_row_prop.set_r = 0
-        column_row_prop.set_g = 0
-        column_row_prop.set_b = 1
+        operator_prop['color_b'] = active_brush.color[2]
+        operator_prop['color_b_int'] = int(round(active_brush.color[2] * 255))
+
+
+        #Whether to write into these channels
+        operator_prop['set_r'] = lr_tools.vc_write_to_red
+        operator_prop['set_g'] = lr_tools.vc_write_to_green
+        operator_prop['set_b'] = lr_tools.vc_write_to_blue
+
+        operator_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_01', text="")
+        operator_prop['color_r'] = float(1.0)
+        operator_prop['color_r_int'] = int(255)
         
-        column_row_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_09', text="")
-        column_row_prop.set_r = 0
-        column_row_prop.set_g = 0
-        column_row_prop.set_b = 0
+        operator_prop['color_g'] = float(0)
+        operator_prop['color_g_int'] = int(0)
+
+        operator_prop['color_b'] = float(0)
+        operator_prop['color_b_int'] = int(0)
+
+        operator_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_04', text="")
+        operator_prop['color_r'] = float(0)
+        operator_prop['color_r_int'] = int(0)
+
+        operator_prop['color_g'] = float(1)
+        operator_prop['color_g_int'] = int(255)
+
+        operator_prop['color_b'] = float(0)
+        operator_prop['color_b_int'] = int(0)
+
+
+        operator_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_05', text="")
+        operator_prop['color_r'] = float(0)
+        operator_prop['color_r_int'] = int(0)
+
+        operator_prop['color_g'] = float(0)
+        operator_prop['color_g_int'] = int(0)
+
+        operator_prop['color_b'] = float(1)
+        operator_prop['color_b_int'] = int(255)
+        
+        operator_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_09', text="")
+        operator_prop['color_r'] = float(0)
+        operator_prop['color_r_int'] = int(0)
+
+        operator_prop['color_g'] = float(0)
+        operator_prop['color_g_int'] = int(0)
+
+        operator_prop['color_b'] = float(0)
+        operator_prop['color_b_int'] = int(0)
 
 
 
@@ -267,32 +311,55 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
 
 
         props_a = column.operator("lr.assign_vertex_alpha", icon='PASTEDOWN', text="Set Alpha")
-        props_a.set_a = bpy.context.scene.lr_tools.lr_vc_alpha_swatch
+        props_a['color_a'] = bpy.context.scene.lr_tools.lr_vc_alpha_swatch
+        props_a['color_a_int'] = int(round(bpy.context.scene.lr_tools.lr_vc_alpha_swatch * 255))
 
+        '''
         column_row = column.row(align = True)
         props_a = column_row.operator("lr.assign_vertex_alpha",  text="0")
-        props_a.set_a = 0
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".1")
-        props_a.set_a = 0.1
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".2")
-        props_a.set_a = 0.2
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".3")
-        props_a.set_a = 0.3
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".4")
-        props_a.set_a = 0.4
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".5")
-        props_a.set_a = 0.5
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".6")
-        props_a.set_a = 0.6
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".7")
-        props_a.set_a = 0.7
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".8")
-        props_a.set_a = 0.8
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".9")
-        props_a.set_a = 0.9
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text="1")
-        props_a.set_a = 1
+        props_a['color_a'] = 0
+        props_a['color_a_int'] = int(0)
 
+        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".1")
+        props_a['color_a'] = 0.1
+        props_a['color_a_int'] = int(round(0.1*255))
+
+        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".2")
+        props_a['color_a'] = 0.2
+        props_a['color_a_int'] = int(round(0.2*255))
+
+        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".3")
+        props_a['color_a'] = 0.3
+        props_a['color_a_int'] = int(round(0.3*255))
+
+        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".4")
+        props_a['color_a'] = 0.4
+        props_a['color_a_int'] = int(round(0.4*255))
+
+        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".5")
+        props_a['color_a'] = 0.5
+        props_a['color_a_int'] = int(round(0.5*255))
+
+        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".6")
+        props_a['color_a'] = 0.6
+        props_a['color_a_int'] = int(round(0.6*255))
+
+        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".7")
+        props_a['color_a'] = 0.7
+        props_a['color_a_int'] = int(round(0.7*255))
+
+        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".8")
+        props_a['color_a'] = 0.8
+        props_a['color_a_int'] = int(round(0.8*255))
+
+        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".9")
+        props_a['color_a'] = 0.9
+        props_a['color_a_int'] = int(round(0.9*255))
+
+        props_a = column_row.operator("lr.assign_vertex_alpha",  text="1")
+        props_a['color_a'] = 1
+        props_a['color_a_int'] = int(255)
+        '''
 
 
 
@@ -327,6 +394,7 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
         row.operator("object.lr_replace_children", text="Children from active", icon ='MOD_ARRAY')
         row = layout.row(align=True)
         row.operator("object.lr_set_collection_offset_from_empty", text="Collection offset update", icon ='SEQ_SEQUENCER')
+        
 
 
         layout = self.layout.box()
@@ -642,6 +710,7 @@ class VIEW3D_PT_lr_move_uv(bpy.types.Panel):
         row.operator("object.mono_move_uv_map_up", text="Move Up", icon='TRIA_UP')
         row.operator("object.mono_move_uv_map_down", text="Move Down", icon = 'TRIA_DOWN')
        
+        col = layout.column(align=True)
         c_row = col.row(align=True)
         op = c_row.operator("object.lr_remove_uv_set_by_index", text="Remove UV index: ", icon = 'PASTEDOWN')
         op.uv_index = bpy.data.scenes['Scene'].lr_tools.remove_uv_index
@@ -669,6 +738,26 @@ class VIEW3D_PT_lr_rename_uv(bpy.types.Panel):
         row.prop(lr_tools, "uv_map_rename",icon_only=True)
 
 
+class DATA_PT_lr_attribute_extend(bpy.types.Panel):
+
+    bl_label = "Add & Remove"
+    bl_idname = "OBJECT_PT_lr_attribute_menu_extend"
+    bl_parent_id = "DATA_PT_mesh_attributes"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    # bl_context = "mesh"
+    bl_category = "LR"
+    # bl_options = {'DEFAULT_CLOSED'}
+
+    def draw(self, context):
+        lr_tools = context.scene.lr_tools
+        layout = self.layout  #UV Create
+        row = layout.row(align=True)
+        row.operator("geometry.lr_add_attribute", text="New Attribute", icon='PRESET_NEW')
+        row.operator("geometry.lr_remove_attribute", text="Remove by name", icon ='REMOVE')
+        # Mark the operator properties as user-adjustable
+
+
 class VIEW3D_PT_lr_add_remove_uv(bpy.types.Panel):
     bl_label = "Add & Remove"
     bl_idname = "OBJECT_PT_lr_add_remove_uv"
@@ -677,8 +766,8 @@ class VIEW3D_PT_lr_add_remove_uv(bpy.types.Panel):
     bl_region_type = 'WINDOW'
     bl_context = "data"
     bl_category = "LR"
-    #	bl_context = "object"
     bl_options = {'DEFAULT_CLOSED'}
+
     def draw(self, context):
         layout = self.layout  #UV Create
         lr_tools = context.scene.lr_tools
@@ -725,7 +814,7 @@ classes = (AddonPreferences,
             # lr_export_but_one_material,   #Moved to LR Export Addon
             OPN_OT_open_folder,
             LR_Unwrap,
-            lr_assign_vertex_color,
+            OBJECT_OT_lr_assign_vertex_color,
             lr_offset_vertex_color,
             lr_vertex_rgb_to_alpha,
             lr_select_obj_by_topology,
@@ -764,7 +853,8 @@ classes = (AddonPreferences,
             VIEW3D_PT_lr_vertex,
             VIEW3D_PT_lr_mesh,
             # VIEW3D_PT_lr_uv,
-
+            
+            DATA_PT_lr_attribute_extend,
             VIEW3D_PT_lr_select_uv,
             VIEW3D_PT_lr_move_uv,
             VIEW3D_PT_lr_rename_uv,
@@ -773,6 +863,11 @@ classes = (AddonPreferences,
             VIEW3D_PT_lr_object,
             OBJECT_OT_lr_drop_object,
             #VIEW3D_PT_lr_ucx
+
+            #Attributes
+            OBJECT_OT_lr_add_attribute, 
+            OBJECT_OT_lr_remove_attribute
+
             )
 
 

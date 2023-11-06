@@ -11,19 +11,24 @@ class lr_vertex_rgb_to_alpha(bpy.types.Operator):
     # def poll(cls, context):
     #     return context.mode == 'EDIT_MESH'
 
-    set_a: bpy.props.FloatProperty(
-        name = 'A',
-        description = 'Alpha',
-        default = 1.0,
-        min = 0,
-        soft_max = 1,
-    )
+
+    def update_int_from_float(self,context):
+        self['color_a_int'] = int(round(self['color_a'] * 255))
+
+
+    def update_float_from_int(self,context):
+        self['color_a'] = self['color_a_int'] / 255
+
+
+    color_a: bpy.props.FloatProperty(name = 'Alpha',description = 'Alpha',default = 1.0,min = 0,soft_max = 1, update = update_int_from_float)
+    color_a_int: bpy.props.IntProperty(name = 'Alpha (0-255)',description = 'Alpha', default = 255,min = 0, soft_max=255, update = update_float_from_int)
 
 
     def execute(self, context):
 
         mode_store = bpy.context.object.mode
         bpy.ops.object.mode_set(mode='OBJECT')
+
 
 
         def set_alpha_color(active_object):
@@ -44,6 +49,7 @@ class lr_vertex_rgb_to_alpha(bpy.types.Operator):
             
             if active_color_attr == None:
                 self.report({'WARNING'}, "Select Color Attribute.")
+                return {'FINISHED'}
             
             if active_color_attr.domain != 'CORNER':
                 self.report({'WARNING'}, "Convert Color Attribute from Vertex to Face Corner.")
@@ -79,16 +85,16 @@ class lr_vertex_rgb_to_alpha(bpy.types.Operator):
                 selection_mode = 2
 
             if selection_mode == 0:
-                apply_vertex_alpha(self.set_a)
+                apply_vertex_alpha(self.color_a)
 
             elif selection_mode == 1:
                 #self.report({'ERROR'}, "Please set selection mode to vertices or faces.")
-                apply_vertex_alpha(self.set_a)
+                apply_vertex_alpha(self.color_a)
 
             elif selection_mode == 2:
-                apply_face_alpha(self.set_a)
+                apply_face_alpha(self.color_a)
             else:
-                apply_vertex_alpha(self.set_a)
+                apply_vertex_alpha(self.color_a)
                 #self.report({'ERROR'}, "Incorrect selection mode.")
 
 
