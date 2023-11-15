@@ -24,9 +24,8 @@ bl_info = {
 
 import bpy, os, bmesh, subprocess
 
-from .operators.attributes import OBJECT_OT_lr_add_attribute,OBJECT_OT_lr_remove_attribute
+from .operators.attributes import OBJECT_OT_lr_add_attribute,OBJECT_OT_lr_remove_attribute, OBJECT_OT_lr_attribute_increment_int_values
 from .operators.unwrap_in_place import LR_Unwrap
-# from .operators.export import lr_export_but_one_material,lr_exportformask
 from .operators.set_vertex_color import OBJECT_OT_lr_assign_vertex_color,lr_offset_vertex_color,lr_pick_vertex_color
 from .operators.set_vertex_alpha import lr_vertex_rgb_to_alpha
 from .operators.select import lr_select_obj_by_topology,lr_deselect_duplicate
@@ -34,12 +33,9 @@ from .operators.replace_children import lr_replace_children
 from .operators.sculpt import lr_multires_sculpt_offset
 from .operators.object_drop import OBJECT_OT_lr_drop_object
 
-
-
 from .operators import UCX
 from .operators import uv_misc
 from .operators import mesh_misc
-from .operators import window_management
 
 from bpy.types import Panel, UIList
 from bpy.props import IntProperty, CollectionProperty, StringProperty,FloatVectorProperty,BoolProperty
@@ -47,15 +43,32 @@ from bpy.props import IntProperty, CollectionProperty, StringProperty,FloatVecto
 from bpy.types import Menu
 from bpy.types import Operator
 from bpy.app.handlers import persistent
-#For sub panels
-from bl_ui.properties_object import ObjectButtonsPanel
+
+from bl_ui.properties_object import ObjectButtonsPanel #For sub panels
+from bpy.utils import previews # for icons
+
+
+
+# ------------------------   ICONS   ------------------------
+
+def register_icons():
+    icons_dir = os.path.join(os.path.dirname(__file__), "icons")
+    global lr_icons_collection
+    lr_icons_collection = previews.new()
+    lr_icons_collection.load("ico_red", os.path.join(icons_dir, "lr_ico_red.png"), 'IMAGE')
+    lr_icons_collection.load("ico_green", os.path.join(icons_dir, "lr_ico_green.png"), 'IMAGE')
+    lr_icons_collection.load("ico_blue", os.path.join(icons_dir, "lr_ico_blue.png"), 'IMAGE')
+    lr_icons_collection.load("ico_white", os.path.join(icons_dir, "lr_ico_white.png"), 'IMAGE')
+    lr_icons_collection.load("ico_black", os.path.join(icons_dir, "lr_ico_black.png"), 'IMAGE') 
+
+def unregister_icons():
+    previews.remove(lr_icons_collection) #Remove custom icons
 
 
 
 
+# ------------------------   PREFERENCES   ------------------------
 
-
-# Preferences ------------------------------------------------------------------------------------------------------------------------------            
 class AddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
                                     
@@ -68,7 +81,6 @@ class AddonPreferences(bpy.types.AddonPreferences):
         box = layout.box()
         color = box.column()
         color.label(text="Keymap List:",icon="KEYINGSET")
-
 
         wm = bpy.context.window_manager
         kc = wm.keyconfigs.user
@@ -94,10 +106,12 @@ class AddonPreferences(bpy.types.AddonPreferences):
             rna_keymap_ui.draw_kmi([], kc, km, kmi, color, 0)
             color.separator()
             old_km_name = km.name
-# END Preferences ------------------------------------------------------------------------------------------------------------------------------  
 
 
-#Keymaps ---------------------------------------------------------------------------------------------------------------------------------------
+
+
+# ------------------------   KEYMAPS   ------------------------
+
 addon_keymaps = []
 def register_keymaps():
     wm = bpy.context.window_manager
@@ -129,13 +143,12 @@ def unregister_keymaps():
         km.keymap_items.remove(kmi)
     addon_keymaps.clear()
 
-#END Keymaps  ---------------------------------------------------------------------------------------------------------------------------------
 
-# Properties 
+
+
+# ------------------------   PROPERTIES   ------------------------
 # To acess properties: bpy.data.scenes['Scene'].lr_tools
 # Is assigned by pointer property below in class registration.
-
-
 
 class lr_tool_settings(bpy.types.PropertyGroup):
     uv_map_new_name: bpy.props.StringProperty(name="  Name", description="Name of the new UV set on selected", default="UVMask", maxlen=1024,)
@@ -156,34 +169,10 @@ class lr_tool_settings(bpy.types.PropertyGroup):
     vc_write_to_blue: bpy.props.BoolProperty(name="Set B", description="False: Blue channel won't be affected.", default=True)
 
 
-    # # Enum for hiding and unhiding objects
-    # hide_objs:bpy.props.EnumProperty(
-    #     name = 'Hide Obj',
-    #     items=[
-    #         ("object.lr_hide_object", "Cube", '', 'HIDE_ON', 0),
-    #         ("mesh.primitive_cube_add", "Cube", '', 'HIDE_ON', 1),
-    #         ("mesh.primitive_circle_add", "Circle", '', 'HIDE_ON', 2),
-    #         ("mesh.primitive_uv_sphere_add", "UV Sphere", '', 'HIDE_ON', 3),
-    #     ],
-    #     description="offers....",
-    #     #default="mesh.primitive_circle_add",
-    #     update=execute_hide_operator
-    # )
 
-    # unhide_objs:bpy.props.EnumProperty(
-    #     name = 'Show Obj',
-    #     items=[
-    #         ("mesh.primitive_plane_add", "Plane", '', 'MESH_PLANE', 0),
-    #         ("mesh.primitive_cube_add", "Cube", '', 'MESH_CUBE', 1),
-    #         ("mesh.primitive_circle_add", "Circle", '', 'MESH_CIRCLE', 2),
-    #         ("mesh.primitive_uv_sphere_add", "UV Sphere", '', 'MESH_UVSPHERE', 3),
-    #     ],
-    #     description="offers....",
-    #     #default="mesh.primitive_plane_add",
-    #     update=execute_unhide_operator
-    # )
 
-#UI -------------------------------------------------------------------------------------
+# ------------------------   UI   ------------------------
+
 class VIEW3D_PT_lr_vertex(bpy.types.Panel):
     bl_label = "VERTEX COLOR"
     bl_idname = "OBJECT_PT_lr_vertex"
@@ -207,14 +196,14 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
                 layout3.template_palette(settings_l, "palette", color=True)
             
 
-        layout_a = self.layout.box()
+        layout = self.layout.box()
         
 
         #Set RGB operators
-        column = layout_a.column(align=True)
+        column = layout.column(align=True)
         column.label(text='RGB')
         
-        row = layout_a.row(align=True)
+        row = layout.row(align=True)
         row.prop(lr_tools, "vc_write_to_red")
         row.prop(lr_tools, "vc_write_to_green")
         row.prop(lr_tools, "vc_write_to_blue")
@@ -224,14 +213,21 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         
         rgb_picker = column_row.operator("lr.pick_vertex_color", icon='EYEDROPPER', text="")  
         rgb_picker.pick_alpha = False
-        column = layout_a.column(align=True)
+
         
 
-        #!!! operator_prop['color_r']  this type of assignment needs to be here because of the property update parameter.Does not trigger property update. 
+        #!!! operator_prop['color_r']  this type of assignment needs to be here because of the property update parameter. Does not trigger property update. 
         # operator_prop.color_r this assignment will trigger update and it will constantly loop.
 
-        column_row = column.row(align=True)
-        operator_prop = column_row.operator("lr.assign_vertex_color", icon='PASTEDOWN', text="Set Color")
+        
+        # Create a row with two columns
+        row = layout.row(align=True)
+        col_left = row.column(align=True)
+        col_right = row.column(align=True)
+
+
+        col_left.scale_y = 1.5
+        operator_prop = col_left.operator("lr.assign_vertex_color", icon='PASTEDOWN', text="Set Color")
         operator_prop['color_r'] = active_brush.color[0]
         operator_prop['color_r_int'] = int(round(active_brush.color[0] * 255))
 
@@ -241,13 +237,16 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         operator_prop['color_b'] = active_brush.color[2]
         operator_prop['color_b_int'] = int(round(active_brush.color[2] * 255))
 
-
         #Whether to write into these channels
         operator_prop['set_r'] = lr_tools.vc_write_to_red
         operator_prop['set_g'] = lr_tools.vc_write_to_green
         operator_prop['set_b'] = lr_tools.vc_write_to_blue
 
-        operator_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_01', text="")
+
+
+        col_right_row = col_right.row(align=True)
+        col_right_row.scale_y = 0.75
+        operator_prop = col_right_row.operator("lr.assign_vertex_color", icon_value=lr_icons_collection["ico_red"].icon_id, text="")
         operator_prop['color_r'] = float(1.0)
         operator_prop['color_r_int'] = int(255)
         
@@ -255,9 +254,10 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         operator_prop['color_g_int'] = int(0)
 
         operator_prop['color_b'] = float(0)
-        operator_prop['color_b_int'] = int(0)
+        operator_prop['color_b_int'] = int(0)   
 
-        operator_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_04', text="")
+
+        operator_prop = col_right_row.operator("lr.assign_vertex_color", icon_value=lr_icons_collection["ico_green"].icon_id, text="")
         operator_prop['color_r'] = float(0)
         operator_prop['color_r_int'] = int(0)
 
@@ -267,8 +267,8 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         operator_prop['color_b'] = float(0)
         operator_prop['color_b_int'] = int(0)
 
-
-        operator_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_05', text="")
+        
+        operator_prop = col_right_row.operator("lr.assign_vertex_color", icon_value=lr_icons_collection["ico_blue"].icon_id, text="")
         operator_prop['color_r'] = float(0)
         operator_prop['color_r_int'] = int(0)
 
@@ -278,7 +278,9 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         operator_prop['color_b'] = float(1)
         operator_prop['color_b_int'] = int(255)
         
-        operator_prop = column_row.operator("lr.assign_vertex_color", icon='SEQUENCE_COLOR_09', text="")
+        col_right_row = col_right.row(align=True)
+        col_right_row.scale_y = 0.75
+        operator_prop = col_right_row.operator("lr.assign_vertex_color", icon_value=lr_icons_collection["ico_black"].icon_id, text="")
         operator_prop['color_r'] = float(0)
         operator_prop['color_r_int'] = int(0)
 
@@ -288,7 +290,15 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         operator_prop['color_b'] = float(0)
         operator_prop['color_b_int'] = int(0)
 
+        operator_prop = col_right_row.operator("lr.assign_vertex_color", icon_value=lr_icons_collection["ico_white"].icon_id, text="")
+        operator_prop['color_r'] = float(1)
+        operator_prop['color_r_int'] = int(255)
 
+        operator_prop['color_g'] = float(1)
+        operator_prop['color_g_int'] = int(255)
+
+        operator_prop['color_b'] = float(1)
+        operator_prop['color_b_int'] = int(255)
 
         # #Offset operators
         # column_row = column.row(align=True)
@@ -298,69 +308,26 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         
 
         
-        #Alpha operators
         
-        column = layout_a.column(align=True)
+        #Alpha operators
+        layout = self.layout.box()
+        column = layout.column(align=True)
         column.label(text='Alpha')
-           
-        column_row = column.row(align = True)
-        column_row.prop(context.scene.lr_tools,'lr_vc_alpha_swatch')
-        alpha_picker = column_row.operator("lr.pick_vertex_color", icon='EYEDROPPER', text="")  
+
+        row = column.row(align=True)
+        # column_row = column.row(align = True)
+        row.prop(context.scene.lr_tools,'lr_vc_alpha_swatch')
+        alpha_picker = row.operator("lr.pick_vertex_color", icon='EYEDROPPER', text="")  
         alpha_picker.pick_alpha = True
-
-
-
-        props_a = column.operator("lr.assign_vertex_alpha", icon='PASTEDOWN', text="Set Alpha")
+        
+        column.separator()
+        row = column.row(align=False)
+        
+        row.scale_y=1.5
+        
+        props_a = row.operator("lr.assign_vertex_alpha", icon='PASTEDOWN', text="Set Alpha")
         props_a['color_a'] = bpy.context.scene.lr_tools.lr_vc_alpha_swatch
         props_a['color_a_int'] = int(round(bpy.context.scene.lr_tools.lr_vc_alpha_swatch * 255))
-
-        '''
-        column_row = column.row(align = True)
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text="0")
-        props_a['color_a'] = 0
-        props_a['color_a_int'] = int(0)
-
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".1")
-        props_a['color_a'] = 0.1
-        props_a['color_a_int'] = int(round(0.1*255))
-
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".2")
-        props_a['color_a'] = 0.2
-        props_a['color_a_int'] = int(round(0.2*255))
-
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".3")
-        props_a['color_a'] = 0.3
-        props_a['color_a_int'] = int(round(0.3*255))
-
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".4")
-        props_a['color_a'] = 0.4
-        props_a['color_a_int'] = int(round(0.4*255))
-
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".5")
-        props_a['color_a'] = 0.5
-        props_a['color_a_int'] = int(round(0.5*255))
-
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".6")
-        props_a['color_a'] = 0.6
-        props_a['color_a_int'] = int(round(0.6*255))
-
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".7")
-        props_a['color_a'] = 0.7
-        props_a['color_a_int'] = int(round(0.7*255))
-
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".8")
-        props_a['color_a'] = 0.8
-        props_a['color_a_int'] = int(round(0.8*255))
-
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text=".9")
-        props_a['color_a'] = 0.9
-        props_a['color_a_int'] = int(round(0.9*255))
-
-        props_a = column_row.operator("lr.assign_vertex_alpha",  text="1")
-        props_a['color_a'] = 1
-        props_a['color_a_int'] = int(255)
-        '''
-
 
 
 class VIEW3D_PT_lr_object(bpy.types.Panel):
@@ -419,10 +386,7 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
 
         row.prop(lr_tools, "hide_by_name",icon_only=False)
         
-
-
-
-
+        
         row = layout.row(align=True)
         op = row.operator("object.lr_hide_object", text="Unhide", icon ='HIDE_OFF')
         op.name = lr_tools.unhide_by_name
@@ -485,169 +449,6 @@ class VIEW3D_PT_lr_mesh(bpy.types.Panel):
         row.operator("mesh.lr_get_edges_length", text="Get edges length", icon = 'MOD_LENGTH')
 
 
-'''
-class VIEW3D_PT_lr_uv(bpy.types.Panel):
-    bl_idname = "OBJECT_PT_lr_uv"
-    bl_label = "UV"
-    bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
-    bl_category = "LR"
-    #	bl_context = "object"
-
-    def draw(self, context):
-
-        layout = self.layout.box()
-
-        layout.label(text="UV Map selection")
-        row = layout.row(align=True)
-        lr_tools = context.scene.lr_tools
-
-        set_index1 = row.operator("object.lr_uv_map_by_index", text="UV 1", icon = 'PASTEDOWN')
-        set_index1.uv_index=1
-
-        set_index2 = row.operator("object.lr_uv_map_by_index", text="UV 2", icon = 'PASTEDOWN')
-        set_index2.uv_index=2
-
-        set_index3 = row.operator("object.lr_uv_map_by_index", text="UV 3", icon = 'PASTEDOWN')
-        set_index3.uv_index=3
-
-        row = layout.row(align=True)
-        row.operator("object.lr_uv_map_by_index_custom", text="Set UV index: ", icon = 'PASTEDOWN')
-        row.scale_x = 0.3
-        row.prop(lr_tools, "select_uv_index",icon_only=True)
-        
-
-
-        # layout.row().separator()
-        row = layout.row(align=True)
-        row.operator("object.lr_uv_index_name", text="Set UV name: ", icon = 'PASTEDOWN')
-        #row.scale_x = 2
-        row.prop(lr_tools, "name_to_uv_index_set",icon_only=True)
-
-        layout.row().separator()
-
-        layout = self.layout.box() 
-        layout.label(text="UV Map control")
-
-        row = layout.row(align=True)
-        row.operator("object.mono_move_uv_map_up", text="Move Up", icon='TRIA_UP')
-        row.operator("object.mono_move_uv_map_down", text="Move Down", icon = 'TRIA_DOWN')
-
-
-
-        # layout.row().separator()
-
-        
-        row = layout.row(align=True)
-
-        row.operator("object.lr_new_uv_set", text="New UV:", icon='PRESET_NEW')
-
-
-        row.prop(lr_tools, "uv_map_new_name",icon_only=True)
-
-        # layout.row().separator()
-
-
-
-
-
-        row = layout.row(align=True)
-        row.operator("object.lr_rename_active_uv_set", text="Rename:", icon ='FILE_TEXT')
-
-        row.prop(lr_tools, "uv_map_rename",icon_only=True)
-
-        # layout.row().separator()
-
-
-
-        col = layout.column(align=True)
-        c_row = col.row(align=True)
-        c_row.operator("object.lr_remove_uv_by_name", text="Remove:", icon ='REMOVE')
-        c_row.prop(lr_tools, "uv_map_delete_by_name",icon_only=True)
-        
-        col.operator("object.lr_remove_active_uv_set", text="Remove active", icon ='REMOVE')
-        
-        
-        c_row = col.row(align=True)
-        op = c_row.operator("object.lr_remove_uv_set_by_index", text="Remove UV index: ", icon = 'PASTEDOWN')
-        op.uv_index = bpy.data.scenes['Scene'].lr_tools.remove_uv_index
-        c_row.scale_x = 0.3
-        c_row.prop(lr_tools, "remove_uv_index",icon_only=True)
-
-
-class VIEW3D_PT_lr_uv(bpy.types.Panel):
-    bl_label = "UV Control"
-    bl_idname = "OBJECT_PT_lr_uv"
-    bl_parent_id = "DATA_PT_uv_texture"
-    bl_space_type = 'PROPERTIES'
-    bl_region_type = 'WINDOW'
-    bl_context = "data"
-    bl_category = "LR"
-    #	bl_context = "object"
-
-    def draw(self, context):
-
-        layout = self.layout.box() #UV Select
-
-        layout.label(text="UV Select")
-        row = layout.row(align=True)
-        lr_tools = context.scene.lr_tools
-
-        set_index1 = row.operator("object.lr_uv_map_by_index", text="UV 1", icon = 'PASTEDOWN')
-        set_index1.uv_index=1
-
-        set_index2 = row.operator("object.lr_uv_map_by_index", text="UV 2", icon = 'PASTEDOWN')
-        set_index2.uv_index=2
-
-        set_index3 = row.operator("object.lr_uv_map_by_index", text="UV 3", icon = 'PASTEDOWN')
-        set_index3.uv_index=3
-
-        row = layout.row(align=True)
-        row.operator("object.lr_uv_map_by_index_custom", text="Set UV index: ", icon = 'PASTEDOWN')
-        row.scale_x = 0.3
-        row.prop(lr_tools, "select_uv_index",icon_only=True)
-        
-        row = layout.row(align=True)
-        row.operator("object.lr_uv_index_name", text="Set UV name: ", icon = 'PASTEDOWN')
-        row.prop(lr_tools, "name_to_uv_index_set",icon_only=True)
-
-        layout.row().separator()
-
-
-        layout = self.layout.box()  #UV Create
-        layout.label(text="UV Add & Remove")
-
-        row = layout.row(align=True)
-        row.operator("object.lr_new_uv_set", text="New UV:", icon='PRESET_NEW')
-        row.prop(lr_tools, "uv_map_new_name",icon_only=True)
-
-        col = layout.column(align=True)
-        c_row = col.row(align=True)
-        c_row.operator("object.lr_remove_uv_by_name", text="Remove:", icon ='REMOVE')
-        c_row.prop(lr_tools, "uv_map_delete_by_name",icon_only=True)
-        col.operator("object.lr_remove_active_uv_set", text="Remove active", icon ='REMOVE')
-
-
-        layout = self.layout.box() #UV Rename
-        layout.label(text="UV Rename")
-        
-        row = layout.row(align=True)
-        row.operator("object.lr_rename_active_uv_set", text="Rename:", icon ='FILE_TEXT')
-        row.prop(lr_tools, "uv_map_rename",icon_only=True)
-
-        layout = self.layout.box() #UV Move
-        layout.label(text="UV Move")
-        
-        row = layout.row(align=True)
-        row.operator("object.mono_move_uv_map_up", text="Move Up", icon='TRIA_UP')
-        row.operator("object.mono_move_uv_map_down", text="Move Down", icon = 'TRIA_DOWN')
-       
-        c_row = col.row(align=True)
-        op = c_row.operator("object.lr_remove_uv_set_by_index", text="Remove UV index: ", icon = 'PASTEDOWN')
-        op.uv_index = bpy.data.scenes['Scene'].lr_tools.remove_uv_index
-        c_row.scale_x = 0.3
-        c_row.prop(lr_tools, "remove_uv_index",icon_only=True)
-'''
 
 class VIEW3D_PT_lr_select_uv(bpy.types.Panel):
     bl_label = "Select"
@@ -710,12 +511,7 @@ class VIEW3D_PT_lr_move_uv(bpy.types.Panel):
         row.operator("object.mono_move_uv_map_up", text="Move Up", icon='TRIA_UP')
         row.operator("object.mono_move_uv_map_down", text="Move Down", icon = 'TRIA_DOWN')
        
-        col = layout.column(align=True)
-        c_row = col.row(align=True)
-        op = c_row.operator("object.lr_remove_uv_set_by_index", text="Remove UV index: ", icon = 'PASTEDOWN')
-        op.uv_index = bpy.data.scenes['Scene'].lr_tools.remove_uv_index
-        c_row.scale_x = 0.3
-        c_row.prop(lr_tools, "remove_uv_index",icon_only=True)
+
 
 
 class VIEW3D_PT_lr_rename_uv(bpy.types.Panel):
@@ -778,6 +574,14 @@ class VIEW3D_PT_lr_add_remove_uv(bpy.types.Panel):
         row.prop(lr_tools, "uv_map_new_name",icon_only=True)
 
         col = layout.column(align=True)
+        c_row = col.row(align=True)
+        op = c_row.operator("object.lr_remove_uv_set_by_index", text="Remove UV index: ", icon = 'PASTEDOWN')
+        op.uv_index = bpy.data.scenes['Scene'].lr_tools.remove_uv_index
+        c_row.scale_x = 0.3
+        c_row.prop(lr_tools, "remove_uv_index",icon_only=True)
+
+
+        col = layout.column(align=True)
         col.operator("object.lr_remove_active_uv_set", text="Remove Active", icon ='REMOVE')
         c_row = col.row(align=True)
         c_row.operator("object.lr_remove_uv_by_name", text="Remove:", icon ='REMOVE')
@@ -809,7 +613,7 @@ def menu_func(self, context):
 #UI End ---------------------------------------------------------------------------------
 classes = (AddonPreferences,
             lr_tool_settings,
-            # window_management.WINDOW_OT_lr_window_popup,
+
             # lr_exportformask,             #Moved to LR Export Addon
             # lr_export_but_one_material,   #Moved to LR Export Addon
             OPN_OT_open_folder,
@@ -866,7 +670,8 @@ classes = (AddonPreferences,
 
             #Attributes
             OBJECT_OT_lr_add_attribute, 
-            OBJECT_OT_lr_remove_attribute
+            OBJECT_OT_lr_remove_attribute,
+            OBJECT_OT_lr_attribute_increment_int_values
 
             )
 
@@ -940,31 +745,36 @@ def lr_palette(scene):
 
 
 
-
-
+  
 
 
 
 def register():
+    
+    register_icons()    
+
     #needs handlers to get scene acess, othervise not working
     bpy.app.handlers.load_post.append(lr_palette)
     bpy.types.TOPBAR_MT_file.append(menu_func) #For opening filepath in explorer
-    
+
     for cls in classes:
         bpy.utils.register_class(cls)
     # To acess properties: bpy.data.scenes['Scene'].lr_tools
     bpy.types.Scene.lr_tools = bpy.props.PointerProperty(type=lr_tool_settings)
     register_keymaps()
 
-    
 
 def unregister():
     bpy.app.handlers.load_post.remove(lr_palette)
     bpy.types.TOPBAR_MT_file.remove(menu_func) #For opening filepath in explorer
+
     for cls in classes:
         bpy.utils.unregister_class(cls)
     del bpy.types.Scene.lr_tools
+
+    unregister_icons()
     unregister_keymaps()
+
 
 
 

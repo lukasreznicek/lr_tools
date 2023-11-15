@@ -2,7 +2,7 @@ import bpy
 
 
 class lr_vertex_rgb_to_alpha(bpy.types.Operator):
-    """Assigns vertex alpha rom RGB value"""
+    """Assigns vertex alpha to selected vertices/polygons"""
     bl_idname = "lr.assign_vertex_alpha"
     bl_label = "Assigns vertex alpha from RGB value"
     bl_options = {'REGISTER', 'UNDO'}

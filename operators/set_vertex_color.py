@@ -3,7 +3,7 @@ import bpy
 
 
 class OBJECT_OT_lr_assign_vertex_color(bpy.types.Operator):
-    """Assigns color to selected vertex or face."""
+    """Assigns color to selected vertex or face"""
     bl_idname = "lr.assign_vertex_color"
     bl_label = "Assigns color to selected vertex or face."
     bl_options = {'REGISTER', 'UNDO'}
@@ -13,20 +13,14 @@ class OBJECT_OT_lr_assign_vertex_color(bpy.types.Operator):
         self['color_r_int'] = int(round(self['color_r'] * 255))
         self['color_g_int'] = int(round(self['color_g'] * 255))
         self['color_b_int'] = int(round(self['color_b'] * 255))
-        
-        # print('COLOR  INT: ',self['color_r_int'])
-        # print(f'UPDATING Int because of the change in Float')
 
 
     def update_float_from_int(self, context):
         self['color_r'] = self['color_r_int'] / 255
         self['color_g'] = self['color_g_int'] / 255
         self['color_b'] = self['color_b_int'] / 255
-        
-        # print('COLOR FLOAT: ',self['color_r'])
-        # print(f'UPDATING Float because of the change in Int')
-        
-    
+
+
     set_r: bpy.props.BoolProperty(name = 'Set Red', description = "False: Red channel won't be affected", default = True)
     set_g: bpy.props.BoolProperty(name = 'Set Green', description = "False: Green channel won't be affected", default = True)
     set_b: bpy.props.BoolProperty(name = 'Set Blue', description = "False: Blue channel won't be affected", default = True)
@@ -45,6 +39,7 @@ class OBJECT_OT_lr_assign_vertex_color(bpy.types.Operator):
 
         mode_store = bpy.context.object.mode
         bpy.ops.object.mode_set(mode='OBJECT')
+
 
         def set_vertex_color(active_object, set_r = True, set_g = True, set_b = True):
             ''' Object needs to be in object mode. '''
@@ -167,11 +162,8 @@ class OBJECT_OT_lr_assign_vertex_color(bpy.types.Operator):
 
 
 
-
-
-
 class lr_offset_vertex_color(bpy.types.Operator):
-    """Offsets color to selected vertex or face."""
+    """Offsets color to selected vertex or face"""
     bl_idname = "lr.offset_vertex_color"
     bl_label = "Offsets color on selected vertexes or faces."
     bl_options = {'REGISTER', 'UNDO'}
@@ -322,6 +314,9 @@ class lr_offset_vertex_color(bpy.types.Operator):
         bpy.ops.object.mode_set(mode=mode_store)
 
         return {'FINISHED'}
+
+
+
 
 class lr_pick_vertex_color(bpy.types.Operator):
     """Pick vertex color from active polygon"""

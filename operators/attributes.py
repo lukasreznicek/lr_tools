@@ -107,3 +107,39 @@ class OBJECT_OT_lr_remove_attribute(bpy.types.Operator):
 
         return {'FINISHED'}		
 
+
+
+class OBJECT_OT_lr_attribute_increment_int_values(bpy.types.Operator):
+    '''
+    Multiple object selection. Active int attributes will be incremented on vertex domain per object. Decimal values stay unchanged. 
+    Active object gets 0.
+    '''
+    bl_idname = "geometry.lr_set_per_obj_attribute"
+    bl_label = "Increments int attribute on vertex domain"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    # name: bpy.props.StringProperty(
+    #     name="",
+    #     description="Enter a string",
+    #     default="Attribute",
+    # )
+
+    @classmethod
+    def poll(cls, context): 
+        return context.mode == 'OBJECT' or context.mode == 'EDIT_MESH'
+        
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+
+    def execute(self, context):
+        selected_objects = bpy.context.selected_objects
+        selected_objects.remove(bpy.context.active_object)
+        selected_objects.insert(0,bpy.context.active_object)
+
+        for index,obj in enumerate(selected_objects):
+            for attribute in obj.data.attributes.active.data:
+                attribute.value = attribute.value%1.0 + index
+
+        return {'FINISHED'}		
+

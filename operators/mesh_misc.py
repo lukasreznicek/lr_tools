@@ -377,9 +377,39 @@ class OBJECT_OT_lr_remove_checker(bpy.types.Operator):
 
 
 class OBJECT_OT_lr_rebuild(bpy.types.Operator):
+    '''
+    
+    Breaks selected objects into subcomponent based on values in Elements attribute.
+    
+    Whole number = Subelement index, this list includes indexes mentioned below
+    .1 = subelement pivot point.
+    .2 = Subelement X axis.
+    .3 = Subelement Y axis.
+    ._01 = Second and third decimal is parent subelement index. If unspecified parent is index 0.
+    '''
+
+
     bl_idname = "object.lr_rebuild"
     bl_label = "Breaks down mesh into subcomponents"
     bl_options = {'REGISTER', 'UNDO'}
+
+    remove_extra: bpy.props.BoolProperty(
+        name="Remove Extra",
+        description="Remove vertices for pivot position. X axis and Y Axis",
+        default=False,
+    )
+
+
+    # @classmethod
+    # def poll(cls, context): 
+    #     return context.mode == 'OBJECT' or context.mode == 'EDIT_MESH'
+        
+    def invoke(self, context, event):
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self)
+
+            
+
 
     def execute(self, context): 
         objs = bpy.context.selected_objects
@@ -398,7 +428,6 @@ class OBJECT_OT_lr_rebuild(bpy.types.Operator):
             """
             type = mathutils.Vector()
             v1,v2,v3 = Vectors for X,Y,Z axis. 
-
             """
             # Create the rotational matrix
             return Matrix((v1, v2, v3)).transposed()
@@ -440,12 +469,12 @@ class OBJECT_OT_lr_rebuild(bpy.types.Operator):
             '''
 
             matrix_world = obj.matrix_world
-                
-            Rloc = matrix_world.to_3x3().normalized().to_4x4().inverted() @ rotation_matrix_to
             
+            Rloc = matrix_world.to_3x3().normalized().to_4x4().inverted() @ rotation_matrix_to
+
             #Object rotation
             obj.matrix_world = (Matrix.Translation(matrix_world.translation) @ rotation_matrix_to @ Matrix.Diagonal(matrix_world.to_scale()).to_4x4())
-                    
+            
             #Mesh rotation
             obj.data.transform(Rloc.inverted())
 
@@ -476,8 +505,9 @@ class OBJECT_OT_lr_rebuild(bpy.types.Operator):
 
         @staticmethod
         def matrix_decompose(matrix_world):
-            ''' returns active_obj_mat_loc, active_obj_mat_rot, active_obj_mat_sca 
-                reconstruct by loc @ rotQuat @ scale 
+            ''' 
+            returns active_obj_mat_loc, active_obj_mat_rot, active_obj_mat_sca 
+            reconstruct by loc @ rotQuat @ scale 
             '''
             
             loc, rotQuat, scale = matrix_world.decompose()
@@ -584,7 +614,7 @@ class OBJECT_OT_lr_rebuild(bpy.types.Operator):
                         vert.select = True
 
                 bpy.ops.object.mode_set(mode='EDIT')
-                bpy.ops.mesh.delete(type='FACE')
+                bpy.ops.mesh.delete(type='VERT')
                 bpy.ops.object.mode_set(mode='OBJECT')            
 
                 if origin_coords !=None:
@@ -678,7 +708,7 @@ class OBJECT_OT_lr_rebuild(bpy.types.Operator):
 
             attr_info_ordered = OrderedDict(sorted(attr_info.items(), key=lambda x: x[0]))
 
-
+            # print(f'{attr_info_ordered= }')
 
             pivot_position = []
             elements = []
@@ -690,60 +720,64 @@ class OBJECT_OT_lr_rebuild(bpy.types.Operator):
                 else:
                     pivot_position = None
 
-                #ORIGIN POSITION SET
-                element = element_separate(obj, attr_info[idx]['index'], parent =None, origin_coords = pivot_position)  #Add object information into ordered dictionary
-                element.name = obj.name + '_part' + '_'+str(idx)
-                attr_info_ordered[idx]['object'] = element
+
 
 
                 #--- ORIGIN ROTATION ---
                 
-                
+                #Get Directional Vector X
                 if attr_info_ordered[idx]['x_axis_index'] != []:
-                    
-                    #Get Directional Vector X
-                    if attr_info_ordered[idx]['x_axis_index'] != []:
-                        origin_idx = attr_info_ordered[idx]['pivot_index'][0]
-                        x_axis_idx = attr_info_ordered[idx]['x_axis_index'][0]
-                        attr_info_ordered[idx]['x_axis_index']
-                        directional_vector_x = (obj.matrix_world @ obj.data.vertices[x_axis_idx].co) - (obj.matrix_world @ obj.data.vertices[origin_idx].co) 
-                    else:
-                        pass
-                        # print('X axis not specified')
+                    origin_idx = attr_info_ordered[idx]['pivot_index'][0]
+                    x_axis_idx = attr_info_ordered[idx]['x_axis_index'][0]
+                    attr_info_ordered[idx]['x_axis_index']
+                    directional_vector_x = (obj.matrix_world @ obj.data.vertices[x_axis_idx].co) - (obj.matrix_world @ obj.data.vertices[origin_idx].co) 
+                else:
+                    self.report({'ERROR'}, "Missing X axis. _.2")
 
-                    #Get Directional Vector Y
-                    if attr_info_ordered[idx]['y_axis_index'] != []:
-                        origin_idx = attr_info_ordered[idx]['pivot_index'][0]
-                        y_axis_idx = attr_info_ordered[idx]['y_axis_index'][0]
-                        attr_info_ordered[idx]['x_axis_index']
-                        directional_vector_y = (obj.matrix_world @ obj.data.vertices[y_axis_idx].co) - (obj.matrix_world @ obj.data.vertices[origin_idx].co)                 
-                    else:
-                        pass
-                        # print('Y axis not specified')
+                #Get Directional Vector Y
+                if attr_info_ordered[idx]['y_axis_index'] != []:
+                    origin_idx = attr_info_ordered[idx]['pivot_index'][0]
+                    y_axis_idx = attr_info_ordered[idx]['y_axis_index'][0]
+                    attr_info_ordered[idx]['x_axis_index']
+                    directional_vector_y = (obj.matrix_world @ obj.data.vertices[y_axis_idx].co) - (obj.matrix_world @ obj.data.vertices[origin_idx].co)                 
+                else:
+                    self.report({'ERROR'}, "Missing X axis. _.3")
 
-                    #Get Directional Vector Z
-                    if attr_info_ordered[idx]['pivot_index'] != []:
-                        directional_vector_z = obj.data.vertices[attr_info_ordered[idx]['pivot_index'][0]].normal @ obj.matrix_world.inverted()
-                        directional_vector_z = directional_vector_z.normalized()
-                    else:
-                        pass
-                        # print('Z axis not specified')
+                #Get Directional Vector Z
+                if attr_info_ordered[idx]['pivot_index'] != []:
+                    directional_vector_z = obj.data.vertices[attr_info_ordered[idx]['pivot_index'][0]].normal @ obj.matrix_world.inverted()
+                    directional_vector_z = directional_vector_z.normalized()
+                else:
+                    self.report({'ERROR'}, "Missing pivot position. Vert _.1")
 
+                orthagonal_xyz_axis =gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
+                
+                #Rotational matrix from orthagonal axis vectors
+                rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
 
-                        
-                    orthagonal_xyz_axis =gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
-                    
-                    #Rotational matrix from orthagonal axis vectors
-                    rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
-
-                    set_origin_rotation(element,rotational_matrix.to_4x4())
+                if self.remove_extra: #Remove verticies which belong to pivot point x axis and y axis. 
+                    attr_info[idx]['index'].remove(attr_info[idx]['x_axis_index'][0])
+                    attr_info[idx]['index'].remove(attr_info[idx]['y_axis_index'][0])
+                    attr_info[idx]['index'].remove(attr_info[idx]['pivot_index'][0])
 
 
+                # ------ DUPLICATE ELEMENT INICIES AND SET ORIGIN POSITION ------
+                element = element_separate(obj, attr_info[idx]['index'], parent =None, origin_coords = pivot_position)  #Add object information into ordered dictionary
+                element.name = obj.name + '_part' + '_'+str(idx)
+                attr_info_ordered[idx]['object'] = element #Assign detached object to dictionary
+
+                # ------ ORIGIN ROTATION SET ------
+                set_origin_rotation(element,rotational_matrix.to_4x4())
 
 
 
-            # PARENTING
+            # ------ SELECT MAKE ID0 ACTIVE AND PARENT  ------
             for idx in attr_info_ordered:
+                    
+                attr_info_ordered[idx]['object'].select_set(True)
+                if idx == 0:
+                    bpy.context.view_layer.objects.active = attr_info_ordered[idx]['object']
+
                 if attr_info_ordered[idx]['parent_element_id'] != None: 
 
                     if attr_info_ordered[idx]['parent_element_id'] != idx:
@@ -755,20 +789,12 @@ class OBJECT_OT_lr_rebuild(bpy.types.Operator):
             # for element in attr_info_ordered:
             #     print(f'ATTRIBUTE INFO #{element}: \n{attr_info_ordered[element]}')
 
+            for col in obj.users_collection:
+                col.objects.unlink(obj)
 
-            bpy.context.collection.objects.unlink(obj)
             bpy.data.objects.remove(obj)
             
 
-        # obj_separated =[]
-        # bpy.context.active_object = obj
-        # for _ in range(int(key_max)):
-        #     bpy.ops.object.duplicate(linked=False)
-        #     duplicate_obj = bpy.context.active_object
-        #     obj_separated.append(duplicate_obj)
-
-
-        # print(attr_info)
 
         return {'FINISHED'}
 
