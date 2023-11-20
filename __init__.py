@@ -24,7 +24,7 @@ bl_info = {
 
 import bpy, os, bmesh, subprocess
 
-from .operators.attributes import OBJECT_OT_lr_add_attribute,OBJECT_OT_lr_remove_attribute, OBJECT_OT_lr_attribute_increment_int_values
+from .operators.attributes import OBJECT_OT_lr_add_attribute,OBJECT_OT_lr_remove_attribute, OBJECT_OT_lr_attribute_select_by_index,OBJECT_OT_lr_attribute_select_by_name,OBJECT_OT_lr_set_obj_info_attr,OBJECT_OT_lr_recover_obj_info
 from .operators.unwrap_in_place import LR_Unwrap
 from .operators.set_vertex_color import OBJECT_OT_lr_assign_vertex_color,lr_offset_vertex_color,lr_pick_vertex_color
 from .operators.set_vertex_alpha import lr_vertex_rgb_to_alpha
@@ -169,8 +169,16 @@ class lr_tool_settings(bpy.types.PropertyGroup):
     vc_write_to_blue: bpy.props.BoolProperty(name="Set B", description="False: Blue channel won't be affected.", default=True)
 
 
+class lr_tool_settings_object(bpy.types.PropertyGroup):
+    lr_object_info_index: bpy.props.IntProperty(default=0)
+    
+    
 
-
+    def update_obj_info_attr(self,context):
+        if context.object:
+            print(self['lr_object_info_index'])
+            # self['lr_object_info_index']=2
+            # row.prop(context.object,'lr_object_info_index')
 # ------------------------   UI   ------------------------
 
 class VIEW3D_PT_lr_vertex(bpy.types.Panel):
@@ -430,6 +438,56 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
         # layout.operator("object.lr_exportformask", text="With one material and one specified UVSet", icon='EXPORT')
 
 
+class VIEW3D_PT_lr_obj_info(bpy.types.Panel):
+    bl_idname = "OBJECT_PT_lr_object_info"
+    bl_label = "OBJECT INFO"
+    bl_options = {'DEFAULT_CLOSED'}
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = "LR"
+    #	bl_context = "object"
+
+    # @classmethod
+    # def poll(cls, context):
+    #     return context.mode == 'OBJECT'
+
+    
+
+    def get_my_int_property(self):
+        # Getter function for a string property
+        return len(self.data.vertices)
+
+    def set_my_int_property(self, value):
+        # Setter function for a string property
+        
+        
+        self["fa"] = value
+    
+    
+    bpy.types.Object.lr_object_info_index_t = IntProperty(
+        name="Sub folder name",
+        default=1,
+        get=get_my_int_property,
+        set=set_my_int_property)
+
+
+    def draw(self, context):
+
+        lr_tools = context.scene.lr_tools
+        lr_tools_object = context.scene.lr_tools_object
+
+
+        layout = self.layout.box()
+        row = layout.row(align=True)
+        if context.object:
+            row.prop(context.object,'lr_object_info_index_t')
+            
+
+        layout.operator('geometry.lr_set_obj_info_attr', text='Set Attribute', icon = 'TRIA_DOWN_BAR')
+        row = layout.row(align=True)
+        layout.operator('object.lr_recover_obj_info', text='Recover Info', icon = 'TRIA_DOWN_BAR')
+        
+        
 
 
 class VIEW3D_PT_lr_mesh(bpy.types.Panel):
@@ -510,7 +568,6 @@ class VIEW3D_PT_lr_move_uv(bpy.types.Panel):
         row = layout.row(align=True)
         row.operator("object.mono_move_uv_map_up", text="Move Up", icon='TRIA_UP')
         row.operator("object.mono_move_uv_map_down", text="Move Down", icon = 'TRIA_DOWN')
-       
 
 
 
@@ -534,6 +591,7 @@ class VIEW3D_PT_lr_rename_uv(bpy.types.Panel):
         row.prop(lr_tools, "uv_map_rename",icon_only=True)
 
 
+
 class DATA_PT_lr_attribute_extend(bpy.types.Panel):
 
     bl_label = "Add & Remove"
@@ -551,7 +609,12 @@ class DATA_PT_lr_attribute_extend(bpy.types.Panel):
         row = layout.row(align=True)
         row.operator("geometry.lr_add_attribute", text="New Attribute", icon='PRESET_NEW')
         row.operator("geometry.lr_remove_attribute", text="Remove by name", icon ='REMOVE')
+        row = layout.row(align=True)
+        row.operator("geometry.lr_select_attribute_by_name", text="Select by Name", icon ='PASTEDOWN')
+        #row.operator("geometry.lr_select_attribute_by_index", text="Select by Index", icon ='PASTEDOWN')
+
         # Mark the operator properties as user-adjustable
+
 
 
 class VIEW3D_PT_lr_add_remove_uv(bpy.types.Panel):
@@ -589,8 +652,6 @@ class VIEW3D_PT_lr_add_remove_uv(bpy.types.Panel):
         
         
 
-
-
 class OPN_OT_open_folder(Operator):
     """Opens Current Folder"""
     bl_idname = "window.open_path"
@@ -606,12 +667,15 @@ class OPN_OT_open_folder(Operator):
         
         return {'FINISHED'}
 
+
+
 def menu_func(self, context):
     self.layout.operator(OPN_OT_open_folder.bl_idname)
  
 
 #UI End ---------------------------------------------------------------------------------
 classes = (AddonPreferences,
+            lr_tool_settings_object,
             lr_tool_settings,
 
             # lr_exportformask,             #Moved to LR Export Addon
@@ -663,6 +727,7 @@ classes = (AddonPreferences,
             VIEW3D_PT_lr_move_uv,
             VIEW3D_PT_lr_rename_uv,
             VIEW3D_PT_lr_add_remove_uv,
+            VIEW3D_PT_lr_obj_info,
 
             VIEW3D_PT_lr_object,
             OBJECT_OT_lr_drop_object,
@@ -671,7 +736,10 @@ classes = (AddonPreferences,
             #Attributes
             OBJECT_OT_lr_add_attribute, 
             OBJECT_OT_lr_remove_attribute,
-            OBJECT_OT_lr_attribute_increment_int_values
+            OBJECT_OT_lr_attribute_select_by_index,
+            OBJECT_OT_lr_attribute_select_by_name,
+            OBJECT_OT_lr_set_obj_info_attr,
+            OBJECT_OT_lr_recover_obj_info
 
             )
 
@@ -745,10 +813,6 @@ def lr_palette(scene):
 
 
 
-  
-
-
-
 def register():
     
     register_icons()    
@@ -760,7 +824,11 @@ def register():
     for cls in classes:
         bpy.utils.register_class(cls)
     # To acess properties: bpy.data.scenes['Scene'].lr_tools
+    bpy.types.Scene.lr_tools_object = bpy.props.PointerProperty(type=lr_tool_settings_object)
     bpy.types.Scene.lr_tools = bpy.props.PointerProperty(type=lr_tool_settings)
+
+    
+    
     register_keymaps()
 
 

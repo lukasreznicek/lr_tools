@@ -1,5 +1,5 @@
 import random, bmesh, bpy, math
-
+from mathutils import Vector,Matrix
 
 def deselect_all_faces(bm):
     '''Deselects all faces'''
@@ -11,11 +11,6 @@ def deselect_faces(faces):
     '''Deselect faces'''
     for face in faces:
         face.select = False
-
-
-import bpy
-from mathutils import Vector
-
 
 
 def get_outliner_selection():
@@ -98,11 +93,11 @@ def select_loops_on_faces(bm,faces_list,uv_layer):
         for loop in face.loops:
             loop[uv_layer].select = True
 
+
 def select_loops(loop_list, uv_layer):
     '''Selects loops in UV editor'''
     for loop in loop_list:
         loop[uv_layer].select = True
-
 
 
 def get_flipped_uv_faces(bm, bm_faces, uv_layer=False):
@@ -129,7 +124,6 @@ def get_flipped_uv_faces(bm, bm_faces, uv_layer=False):
     return flipped_faces       
 
 
-
 def deselect_loops_on_faces(bm,faces_list,uv_layer):
     '''Deselect Loops on faces'''
     for face in faces_list:
@@ -141,6 +135,7 @@ def get_loop_selection(bm,uv_layer):
     '''Get loop selection'''
     selected_loops = [j for i in bm.faces for j in i.loops if j[uv_layer].select == True]
     return selected_loops
+
 
 def get_selected_uv_faces_from_loops(selected_loops: list,uv_layer):
     '''Returns a SET of faces.'''
@@ -163,24 +158,12 @@ def get_selected_uv_faces_from_loops(selected_loops: list,uv_layer):
     return uv_faces
 
 
-
 def get_face_selection(bm):
     '''Store face selection'''
     selected_faces = (i for i in bm.faces if i.select == True)
     return selected_faces
 
 
-# #Remove loops on the same UV position = vert position
-# def remove_overlapping_loops(island_loops: list):
-#     '''Supports list of lists (islands).'''
-#     vert_sel_ind = []
-#     vert_sel = []
-#     for i in island_loops:
-#         if i.vert.index not in vert_sel_ind:
-#             vert_sel.append(i)
-#         vert_sel_ind.append(i.vert.index)
-#     return vert_sel
-#Remove loops on the same UV position = vert position
 def remove_overlapping_loops(island_loops: list):
     '''Input one list only'''
     vert_sel_ind = set()
@@ -200,7 +183,7 @@ def get_list_of_loops_from_faces(faces: list,uv_layer):
             loops.append(loop)       
     return loops
 
-#Get list of selected loops from list of faces
+
 def get_list_of_selected_loops_from_faces(faces: list,uv_layer):
     sel_loops = []    
     """Get list of selected loops from list of faces."""
@@ -357,10 +340,6 @@ def cal_angle(midp,vert_loops,uv_layer,aspect_correction=[1,1]):
             
     return angles
 
-
-
-
-
 # --- UV IMAGE ---
 
 def get_active_uv_editor_images():
@@ -435,6 +414,7 @@ def faces_to_loops(BM_Faces):
 
 
 def isl_cent(loops_lst: list,uv_layer,aspect_correction=[1,1]):
+
     '''Returns X and Y average center of input loops.'''
 
     x = [x[uv_layer].uv[0]*aspect_correction[0] for x in loops_lst]
@@ -442,3 +422,113 @@ def isl_cent(loops_lst: list,uv_layer,aspect_correction=[1,1]):
 
     avg  = [sum(x)/len(x),sum(y)/len(y)]
     return avg
+
+
+
+
+
+
+def duplicate_obj(obj:bpy.types.Object, 
+                  name:str = None, 
+                  apply_modifiers:bool = True,
+                  parent:bpy.types.Object = None,
+                  same_transform:bool = True)->bpy.types.Object:
+    
+    """
+    Duplicate object using BMesh.
+
+    :param obj: The original object to duplicate.
+    :param name: The name for the duplicated object and its mesh data.
+    :param apply_modifiers: Whether to apply modifiers from the original object.
+                            If True, the duplicated object will include the effects of modifiers.
+                            If False, the duplicated object will have the same mesh data as the original.
+    :return: Returns the duplicated object in world zero in active scene and collection.
+
+    """
+    if name !=None:
+        name = obj.name
+
+    bm = bmesh.new()
+
+    if apply_modifiers:
+        depsgraph = bpy.context.evaluated_depsgraph_get() 
+        bm.from_mesh(obj.evaluated_get(depsgraph).data)
+    else:
+        bm.from_mesh(obj.data)
+
+
+    obj_data_new = bpy.data.meshes.new(name+'_data')
+    bm.to_mesh(obj_data_new)
+
+    obj_new = bpy.data.objects.new(name,obj_data_new)
+    
+    
+    if parent != None:
+        obj_new.parent = parent
+
+    if same_transform == True:
+        obj_new.matrix_world = obj.matrix_world
+    else:
+        obj_new.matrix_world = Matrix.identity(4)
+
+
+    bpy.context.collection.objects.link(obj_new) #link to scene
+
+    return obj_new
+
+
+def delete_verts(obj:bpy.types.Object,
+                 vertices:list,
+                 invert:bool = False):
+    '''
+    :param vertices_to_keep: list of vertex indexes. [1,54,68,78,2,33...]
+    :param invert: 
+    '''
+    if bpy.context.mode == 'EDIT_MESH':
+        bm = bmesh.from_edit_mesh(obj.data)
+    if bpy.context.mode == 'OBJECT':
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+        
+    if invert == True:
+        vertices_to_delete = [v for v in bm.verts if v.index not in vertices]
+    else:
+        vertices_to_delete = [v for v in bm.verts if v.index in vertices]
+    
+    bmesh.ops.delete(bm, geom=vertices_to_delete, context='VERTS')
+    
+    
+    if bpy.context.mode == 'EDIT_MESH':
+        bmesh.update_edit_mesh(obj.data)
+    if bpy.context.mode == 'OBJECT':
+        bm.to_mesh(obj.data)
+        obj.data.update()
+
+
+
+
+# def vector_average_position(vectors:list):
+#     """
+#     Calculate the average position of a list of vectors.
+    
+#     Parameters:
+#         vectors (list of mathutils.Vector): List of vectors.
+
+#     Returns:
+#         mathutils.Vector: Average position vector.
+#     """
+#     # Check if the list is not empty
+#     if not vectors:
+#         raise ValueError("Input list of vectors is empty.")
+
+#     # Initialize a Vector with zeros
+#     average_vector = Vector((0.0, 0.0, 0.0))
+
+#     # Calculate the sum of vectors
+#     for vector in vectors:
+#         average_vector += vector
+
+#     # Divide by the number of vectors to get the average
+#     average_vector /= len(vectors)
+
+#     return average_vector
