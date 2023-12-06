@@ -215,23 +215,29 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
 
     store_mode: bpy.props.EnumProperty(
         items=[
-            ('PIVOT', 'Pivot', 'Use Pivot'),
+            ('ORIGIN', 'Pivot', 'Use Pivot'),
             ('X_AXIS', 'X Axis', 'Use X Axis'),
             ('Y_AXIS', 'Y Axis', 'Use Y Axis'),
             ('ELEMENT_INDEX', 'Element Index', 'Use Element Index')
         ],
-        default='PIVOT',
+        default='ORIGIN',
         description="Choose store mode"
     )
-
+    enable: bpy.props.BoolProperty(default=True, name = 'Enable', description=' True: assign value. \nFalse: Remove')
     
     @classmethod
     def poll(cls, context): 
         return context.mode == 'OBJECT' or context.mode == 'EDIT_MESH'
         
+    skip_invoke: bpy.props.BoolProperty(default=False, options={'HIDDEN'})    
+    
     def invoke(self, context, event):
-        wm = context.window_manager
-        return wm.invoke_props_dialog(self)
+        if self.skip_invoke == True:
+            return self.execute(context)
+        
+        else:
+            wm = context.window_manager
+            return wm.invoke_props_dialog(self)
 
 
     def execute(self, context):
@@ -262,7 +268,7 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
             digit = int(shifted_number) % 10
 
             return digit
-        
+
         for obj_index, obj in enumerate(bpy.context.selected_objects):
             if obj.type == 'MESH':
 
@@ -276,8 +282,6 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
                         obj.data.attributes.new(self.attr_name,type='FLOAT', domain='POINT')
                 else:
                     obj.data.attributes.new(self.attr_name,type='FLOAT', domain='POINT')
-
-
 
 
                 if bpy.context.mode == 'OBJECT':
@@ -296,25 +300,36 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
                 for vert in bm.verts:
                     if vert.select == True:
                         
-                        if self.store_mode == 'PIVOT':
-                            vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 1, 0)
+                        if self.store_mode == 'ORIGIN':
+                            if self.enable == True:
+                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 1, 0)
+                            else:
+                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
+                        
                         elif self.store_mode == 'X_AXIS':
-                            vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 2, 0)
+                            if self.enable == True:
+                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 2, 0)
+                            else:
+                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
                         elif self.store_mode == 'Y_AXIS':
-                            vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 3, 0)
+                            if self.enable == True:
+                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 3, 0)
+                            else:
+                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
+                        
                         elif self.store_mode == 'ELEMENT_INDEX':
                             vert[bm_layer] = vert[bm_layer] = obj_index + round(vert[bm_layer] - int(vert[bm_layer]),6)
                     
-                    else:
-                        if self.store_mode == 'PIVOT':
-                            if get_digit_at_decimal_place(vert[bm_layer], 1) == 1: #Reset to 0 if value 1 is present at first decimal place on unselected vertex.
-                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
-                        elif self.store_mode == 'X_AXIS':
-                            if get_digit_at_decimal_place(vert[bm_layer], 1) == 2: #Reset to 0 if value 2 is present at first decimal place. 
-                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
-                        elif self.store_mode == 'Y_AXIS':
-                            if get_digit_at_decimal_place(vert[bm_layer], 1) == 3: #Reset to 0 if value 3 is present at first decimal place. 
-                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
+                    # else:
+                    #     if self.store_mode == 'PIVOT':
+                    #         if get_digit_at_decimal_place(vert[bm_layer], 1) == 1: #Reset to 0 if value 1 is present at first decimal place on unselected vertex.
+                    #             vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
+                    #     elif self.store_mode == 'X_AXIS':
+                    #         if get_digit_at_decimal_place(vert[bm_layer], 1) == 2: #Reset to 0 if value 2 is present at first decimal place. 
+                    #             vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
+                    #     elif self.store_mode == 'Y_AXIS':
+                    #         if get_digit_at_decimal_place(vert[bm_layer], 1) == 3: #Reset to 0 if value 3 is present at first decimal place. 
+                    #             vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
 
                 if bpy.context.mode == 'OBJECT':
                     bm.to_mesh(obj.data)
@@ -484,7 +499,10 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
         @staticmethod
         def move_origin_to_coord(obj,x,y,z):
+            '''
+            Input is global x,y,z mathutils.Vector()
             
+            '''
             co_translation_vec = Vector((x,y,z))
 
             obj_translation_vec = obj.matrix_world.to_translation()
@@ -510,7 +528,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             if is_object == False:
                 bpy.context.object.mode = store_mode
         @staticmethod
-        def get_global_vertex_position(obj, vertex_index:list):
+        def get_global_vector_position(obj, vector):
             """
             Get the global vertex position for a given object and vertex index.
             
@@ -525,23 +543,16 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 # print("Invalid object or not a mesh.")
                 return None
             
-            vertex_index_len = len(vertex_index)
-            if vertex_index_len >1: #calculate average vector
-                all_vert_coord = [obj.data.vertices[i].co for i in vertex_index]
-                    # Initialize a Vector with zeros
-                local_vertex_co = Vector((0.0, 0.0, 0.0))
-
-                for vector in all_vert_coord:
-                    local_vertex_co += vector
-
-                local_vertex_co /= vertex_index_len
-
-
-            else:
-                local_vertex_co = obj.data.vertices[vertex_index[0]].co
-            
-            return obj.matrix_world @ local_vertex_co
+            return obj.matrix_world @ vector
         
+        def average_vectors(list_of_vectors:list): 
+
+            local_vertex_co = Vector((0.0, 0.0, 0.0))
+
+            for vector in list_of_vectors:
+                local_vertex_co += vector
+
+            return local_vertex_co / len(list_of_vectors)
 
 
         @staticmethod
@@ -606,7 +617,10 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
         objs = bpy.context.selected_objects
         
+        depsgraph = bpy.context.evaluated_depsgraph_get()
+            
         for obj in objs:
+
             # obj.data = obj.data.copy() #Make object unique. Remove instancing.
             
             # # print(f'{obj.data.users = }')
@@ -617,18 +631,21 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             #     bpy.ops.object.modifier_apply(modifier=modifier.name)
             # bpy.context.view_layer.objects.active = act_obj
             
+            obj_evaluated = obj.evaluated_get(depsgraph)  #modifiers need to be applied before taking eny info from them such as coordinates. .co does not include modifiers.
+            
+        # print(f'{len(bm.faces)= }')
 
-            attr_name = self.src_attr_name
-            attribute = obj.data.attributes.get(attr_name)
 
+            attribute = obj_evaluated.data.attributes.get(self.src_attr_name)
 
             if attribute == None:
-                message = f'Attribute {attr_name} not found on {obj.name}. Skipping.'
+                message = f'Attribute {self.src_attr_name} not found on {obj.name}. Skipping.'
                 self.report({'INFO'}, message)
                 continue
 
 
             
+
             # 0  = Parent object, 
             # Whole number = subelement index, this list includes indexes mentioned below
             # .1 = subelement pivot point.
@@ -672,42 +689,72 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
 
 
-                #ORIGIN POSITION GET
-                if attr_info_ordered[idx]['pivot_index']:
-                    pivot_position = get_global_vertex_position(obj, attr_info_ordered[idx]['pivot_index'])
+                # ------------------ GET ORIGIN LOCAL AND GLOBAL POSITION FROM VERTEX INDEXES + AVERAGED VERSION ------------------
+
+                origin_idx_len = len(attr_info_ordered[idx]['pivot_index'])
+
+                if origin_idx_len == 1: # No need to average vectors if only one vert index.
+                    origin_vector_local_avg = obj_evaluated.data.vertices[attr_info_ordered[idx]['pivot_index'][0]].co
+                    origin_vector_global_avg =  get_global_vector_position(obj_evaluated,origin_vector_local_avg)
+                
+                elif origin_idx_len > 1: # Averaged origin vectors
+                    origin_vectors_local = [obj_evaluated.data.vertices[vert_idx].co for vert_idx in attr_info_ordered[idx]['pivot_index']]
+                    origin_vector_local_avg = average_vectors(origin_vectors_local)
+                    origin_vector_global_avg =  get_global_vector_position(obj_evaluated,origin_vector_local_avg)
+                
                 else:
-                    pivot_position = None
+                    self.report({'ERROR'}, "Missing Origin Attribute.")
+                    continue
 
 
 
-                #--- ORIGIN ROTATION GET ---
+                # ------------------ ORIGIN ROTATION GET ------------------
 
-                #Get Directional Vector X
-                if attr_info_ordered[idx]['x_axis_index'] != []:
-                    origin_idx = attr_info_ordered[idx]['pivot_index'][0]
-                    x_axis_idx = attr_info_ordered[idx]['x_axis_index'][0]
-                    attr_info_ordered[idx]['x_axis_index']
-                    directional_vector_x = (obj.matrix_world @ obj.data.vertices[x_axis_idx].co) - (obj.matrix_world @ obj.data.vertices[origin_idx].co) 
+                # ------ Get Directional Vector X from  vertex positions + averaged version ------
+                x_axis_idx_len = len(attr_info_ordered[idx]['x_axis_index'])
+                if x_axis_idx_len == 1: # No need to average vectors if only one vert index.
+                    x_axis_vector_local = obj_evaluated.data.vertices[attr_info_ordered[idx]['x_axis_index'][0]].co
+
+                    directional_vector_x = (obj_evaluated.matrix_world @ x_axis_vector_local) - (obj_evaluated.matrix_world @ origin_vector_local_avg)
+                
+                elif x_axis_idx_len > 1: #Averaged vectors in case of multiple vertex idx.
+                    x_axis_vectors_local = [obj_evaluated.data.vertices[vert_idx].co for vert_idx in attr_info_ordered[idx]['x_axis_index']]
+                    x_axis_vector_local_avg = average_vectors(x_axis_vectors_local)
+
+                    directional_vector_x = (obj_evaluated.matrix_world @ x_axis_vector_local_avg) - (obj_evaluated.matrix_world @ origin_vector_local_avg)
+                
                 else:
-                    self.report({'ERROR'}, "Missing X axis. _.2")
+                    self.report({'ERROR'}, "Missing X Axis Attribute")
+                    continue
 
 
-                #Get Directional Vector Y
-                if attr_info_ordered[idx]['y_axis_index'] != []:
-                    origin_idx = attr_info_ordered[idx]['pivot_index'][0]
-                    y_axis_idx = attr_info_ordered[idx]['y_axis_index'][0]
-                    attr_info_ordered[idx]['x_axis_index']
-                    directional_vector_y = (obj.matrix_world @ obj.data.vertices[y_axis_idx].co) - (obj.matrix_world @ obj.data.vertices[origin_idx].co)                 
+
+                # ------  Get Directional Vector Y  ------
+
+                y_axis_idx_len = len(attr_info_ordered[idx]['y_axis_index'])
+                if y_axis_idx_len == 1: 
+                    y_axis_vector_local = obj_evaluated.data.vertices[attr_info_ordered[idx]['y_axis_index'][0]].co
+                    
+                    directional_vector_y = (obj_evaluated.matrix_world @ y_axis_vector_local) - (obj_evaluated.matrix_world @ origin_vector_local_avg) 
+                
+                elif y_axis_idx_len > 1: #Averaged version
+                    y_axis_vectors_local = [obj_evaluated.data.vertices[vert_idx].co for vert_idx in attr_info_ordered[idx]['y_axis_index']]
+                    y_axis_vector_local_avg = average_vectors(y_axis_vectors_local)
+                    
+                    directional_vector_y = (obj_evaluated.matrix_world @ y_axis_vector_local_avg) - (obj_evaluated.matrix_world @ origin_vector_local_avg)
+                
                 else:
-                    self.report({'ERROR'}, "Missing X axis. _.3")
+                    self.report({'ERROR'}, "Missing Y Axis Attribute")
+                    continue
 
 
                 #Get Directional Vector Z
                 if attr_info_ordered[idx]['pivot_index'] != []:
-                    directional_vector_z = obj.data.vertices[attr_info_ordered[idx]['pivot_index'][0]].normal @ obj.matrix_world.inverted()
+                    directional_vector_z = obj_evaluated.data.vertices[attr_info_ordered[idx]['pivot_index'][0]].normal @ obj_evaluated.matrix_world.inverted()
                     directional_vector_z = directional_vector_z.normalized()
                 else:
                     self.report({'ERROR'}, "Missing pivot position. Vert _.1")
+                    continue
 
                 orthagonal_xyz_axis =gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
                 
@@ -715,24 +762,40 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
 
                 if self.remove_extra: #Remove verticies which belong to pivot point x axis and y axis. 
-                    attr_info_ordered[idx]['index'].remove(attr_info_ordered[idx]['x_axis_index'][0])
-                    attr_info_ordered[idx]['index'].remove(attr_info_ordered[idx]['y_axis_index'][0])
-                    attr_info_ordered[idx]['index'].remove(attr_info_ordered[idx]['pivot_index'][0])
+                    for vert_idx in attr_info_ordered[idx]['x_axis_index']:
+                        attr_info_ordered[idx]['index'].remove(vert_idx)
+
+                    for vert_idx in attr_info_ordered[idx]['y_axis_index']:
+                        attr_info_ordered[idx]['index'].remove(vert_idx)                    
+                
+                    for vert_idx in attr_info_ordered[idx]['pivot_index']:
+                        attr_info_ordered[idx]['index'].remove(vert_idx)
+
+
+
+
 
 
                 # ------ DUPLICATE ELEMENT ------
-                element = lr_functions.duplicate_obj(obj,
+                element = lr_functions.duplicate_obj(obj_evaluated,
                                                      name=obj.name + '_part' + '_'+str(idx),
-                                                     apply_modifiers=True,
+                                                     apply_modifiers=False, #already applying above
                                                      same_transform=True)
                 
                 # ------ REMOVE ALL BUT NEEDED INDEXES ------
                 lr_functions.delete_verts(element,attr_info_ordered[idx]['index'],invert=True)
+
+
                 attr_info_ordered[idx]['object'] = element #Assign detached object to dictionary
 
+
                 # ------------ SET ORIGIN POSITION ------------
-                if pivot_position:
-                    move_origin_to_coord(element,pivot_position[0],pivot_position[1],pivot_position[2])
+                if origin_vector_global_avg:
+                    
+                    move_origin_to_coord(element,
+                                         origin_vector_global_avg[0],
+                                         origin_vector_global_avg[1],
+                                         origin_vector_global_avg[2])
 
                 # ------------ SET ORIGIN ROTATION ------------
                 set_origin_rotation(element,rotational_matrix.to_4x4())

@@ -452,41 +452,99 @@ class VIEW3D_PT_lr_obj_info(bpy.types.Panel):
     #     return context.mode == 'OBJECT'
 
     
+    ''' Setting and applying using bool attributes. Dont want to loop over all vertices in getter. 
+    def get_my_bool_origin_property(self):
+        attr_name = 'ObjInfo'
 
-    def get_my_int_property(self):
-        # Getter function for a string property
-        return len(self.data.vertices)
+        attr = self.data.attributes.get(attr_name)
+        if attr:
+            attr_domain = attr.domain
+            attr_data_type = attr.data_type
+        else:
+            attr_domain = None
+            attr_data_type = None
 
-    def set_my_int_property(self, value):
-        # Setter function for a string property
-        
-        
-        self["fa"] = value
-    
-    
-    bpy.types.Object.lr_object_info_index_t = IntProperty(
-        name="Sub folder name",
-        default=1,
-        get=get_my_int_property,
-        set=set_my_int_property)
+        if attr_domain == 'POINT' and attr_data_type == 'FLOAT':
+            if bpy.context.mode == 'EDIT_MESH':
+                bm = bmesh.from_edit_mesh(self.data)
+                layer = bm.verts.layers.float[attr_name]
+                
+                if bm.select_history:
+                    active_selection = bm.select_history[-1]
+                    if bm.select_mode == {'VERT'}:
+                        val = int(active_selection[layer]*10)
+                        if val == 1:
+                            return True
+                
+        return False
 
+
+    def set_my_bool_origin_property(self,context):
+        if hasattr(self, 'lr_object_info_origin'):
+            if self.lr_object_info_origin == False:
+                bpy.ops.geometry.lr_set_obj_info_attr(attr_name="ObjInfo", store_mode='PIVOT', skip_invoke=True, enable=True)
+            else:
+                bpy.ops.geometry.lr_set_obj_info_attr(attr_name="ObjInfo", store_mode='PIVOT', skip_invoke=True, enable=False)
+
+    '''
 
     def draw(self, context):
 
         lr_tools = context.scene.lr_tools
         lr_tools_object = context.scene.lr_tools_object
-
-
         layout = self.layout.box()
-        row = layout.row(align=True)
-        if context.object:
-            row.prop(context.object,'lr_object_info_index_t')
-            
-
-        layout.operator('geometry.lr_set_obj_info_attr', text='Set Attribute', icon = 'TRIA_DOWN_BAR')
-        row = layout.row(align=True)
-        layout.operator('object.lr_recover_obj_info', text='Recover Info', icon = 'TRIA_DOWN_BAR')
         
+        
+        if context.mode == 'EDIT_MESH':
+
+            row = layout.row(align=True)
+            row.label(text='Origin:')
+
+            ope = row.operator("geometry.lr_set_obj_info_attr", icon='ADD',text='')
+            ope.skip_invoke=True
+            ope.store_mode='ORIGIN' 
+            ope.enable=True
+
+            ope = row.operator("geometry.lr_set_obj_info_attr", icon='REMOVE',text='')
+            ope.skip_invoke=True
+            ope.store_mode='ORIGIN' 
+            ope.enable=False
+
+
+
+            row = layout.row(align=True)
+            row.label(text='X Axis: ')
+
+            ope = row.operator("geometry.lr_set_obj_info_attr", icon='ADD',text='')
+            ope.skip_invoke=True
+            ope.store_mode='X_AXIS' 
+            ope.enable=True
+
+            ope = row.operator("geometry.lr_set_obj_info_attr", icon='REMOVE',text='')
+            ope.skip_invoke=True
+            ope.store_mode='X_AXIS' 
+            ope.enable=False
+
+
+
+            row = layout.row(align=True)
+            row.label(text='Y Axis: ')
+
+            ope = row.operator("geometry.lr_set_obj_info_attr", icon='ADD',text='')
+            ope.skip_invoke=True
+            ope.store_mode='Y_AXIS' 
+            ope.enable=True
+
+            ope = row.operator("geometry.lr_set_obj_info_attr", icon='REMOVE',text='')
+            ope.skip_invoke=True
+            ope.store_mode='Y_AXIS' 
+            ope.enable=False
+
+
+        if context.mode == 'OBJECT':
+            row = layout.row(align=True)
+            row.operator('object.lr_recover_obj_info', text='Recover Info', icon = 'TRIA_DOWN_BAR')
+            
         
 
 
@@ -529,19 +587,16 @@ class VIEW3D_PT_lr_select_uv(bpy.types.Panel):
         set_index1 = row.operator("object.lr_uv_map_by_index", text="UV 1", icon = 'PASTEDOWN')
         set_index1.uv_index=1
         
-
         set_index2 = row.operator("object.lr_uv_map_by_index", text="UV 2", icon = 'PASTEDOWN')
         set_index2.uv_index=2
 
         set_index3 = row.operator("object.lr_uv_map_by_index", text="UV 3", icon = 'PASTEDOWN')
         set_index3.uv_index=3
 
-        
         row = layout.row(align=True)
         row.operator("object.lr_uv_map_by_index_custom", text="Set UV index: ", icon = 'PASTEDOWN')
         row.scale_x = 0.3
         row.prop(lr_tools, "select_uv_index",icon_only=True)
-        
         
         row = layout.row(align=True)
         row.operator("object.lr_uv_index_name", text="Set UV Name: ", icon = 'PASTEDOWN')
@@ -718,20 +773,19 @@ classes = (AddonPreferences,
             lr_pick_vertex_color,
             lr_multires_sculpt_offset,
             lr_deselect_duplicate,
+
+            #PANELS
+            DATA_PT_lr_attribute_extend,
             VIEW3D_PT_lr_vertex,
             VIEW3D_PT_lr_mesh,
-            # VIEW3D_PT_lr_uv,
-            
-            DATA_PT_lr_attribute_extend,
             VIEW3D_PT_lr_select_uv,
             VIEW3D_PT_lr_move_uv,
             VIEW3D_PT_lr_rename_uv,
             VIEW3D_PT_lr_add_remove_uv,
-            VIEW3D_PT_lr_obj_info,
-
+            
             VIEW3D_PT_lr_object,
+            VIEW3D_PT_lr_obj_info,
             OBJECT_OT_lr_drop_object,
-            #VIEW3D_PT_lr_ucx
 
             #Attributes
             OBJECT_OT_lr_add_attribute, 

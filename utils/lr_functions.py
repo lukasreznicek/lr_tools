@@ -432,7 +432,7 @@ def duplicate_obj(obj:bpy.types.Object,
                   name:str = None, 
                   apply_modifiers:bool = True,
                   parent:bpy.types.Object = None,
-                  same_transform:bool = True)->bpy.types.Object:
+                  same_transform:bool = True,)->bpy.types.Object:
     
     """
     Duplicate object using BMesh.
@@ -452,7 +452,8 @@ def duplicate_obj(obj:bpy.types.Object,
 
     if apply_modifiers:
         depsgraph = bpy.context.evaluated_depsgraph_get() 
-        bm.from_mesh(obj.evaluated_get(depsgraph).data)
+        bm.from_mesh(obj.evaluated_get(depsgraph).to_mesh())
+        # print(f'{len(bm.faces)= }')
     else:
         bm.from_mesh(obj.data)
 
@@ -462,19 +463,165 @@ def duplicate_obj(obj:bpy.types.Object,
 
     obj_new = bpy.data.objects.new(name,obj_data_new)
     
+ 
+    for material in obj.data.materials: #Assign materials.
+        obj_new.data.materials.append(material)
+    obj_new.active_material_index = obj.active_material_index
+    
     
     if parent != None:
         obj_new.parent = parent
 
-    if same_transform == True:
-        obj_new.matrix_world = obj.matrix_world
-    else:
-        obj_new.matrix_world = Matrix.identity(4)
+    obj_new.matrix_world = obj.matrix_world if same_transform else Matrix.identity(4)
 
 
     bpy.context.collection.objects.link(obj_new) #link to scene
-
+    # obj.collection.objects.link(obj_new)
+    bm.free()
+    
     return obj_new
+
+
+
+# ''' Its working it just does not preserve materials
+
+
+# def duplicate_obj(obj:bpy.types.Object, 
+#                   name:str = None, 
+#                   apply_modifiers:bool = True,
+#                   parent:bpy.types.Object = None,
+#                   same_transform:bool = True)->bpy.types.Object:
+    
+#     """
+#     Duplicate object using BMesh.
+
+#     :param obj: The original object to duplicate.
+#     :param name: The name for the duplicated object and its mesh data.
+#     :param apply_modifiers: Whether to apply modifiers from the original object.
+#                             If True, the duplicated object will include the effects of modifiers.
+#                             If False, the duplicated object will have the same mesh data as the original.
+#     :return: Returns the duplicated object in world zero in active scene and collection.
+
+#     """
+#     if name !=None:
+#         name = obj.name
+
+#     bm = bmesh.new()
+
+#     if apply_modifiers:
+
+#         depsgraph = bpy.context.evaluated_depsgraph_get() 
+        
+#         bm.from_mesh(obj.evaluated_get(depsgraph).data)
+
+
+    
+    
+#     else:
+#         bm.from_mesh(obj.data)
+
+
+#     obj_data_new = bpy.data.meshes.new(name+'_data')
+#     bm.to_mesh(obj_data_new)
+
+#     obj_new = bpy.data.objects.new(name,obj_data_new)
+    
+    
+#     if parent != None:
+#         obj_new.parent = parent
+
+#     if same_transform == True:
+#         obj_new.matrix_world = obj.matrix_world
+#     else:
+#         obj_new.matrix_world = Matrix.identity(4)
+
+
+#     bpy.context.collection.objects.link(obj_new) #link to scene
+#     # obj.collection.objects.link(obj_new)
+#     bm.free()
+    
+#     return obj_new
+# # '''
+
+
+
+
+
+
+
+# #Slowe then the upper one but Preseves 
+# def duplicate_obj(obj:bpy.types.Object, 
+#                   name:str = None, 
+#                   apply_modifiers:bool = True,
+#                   parent:bpy.types.Object = None,
+#                   same_transform:bool = True)->bpy.types.Object:
+    
+#     """
+#     Duplicate object using BMesh.
+
+#     :param obj: The original object to duplicate.
+#     :param name: The name for the duplicated object and its mesh data.
+#     :param apply_modifiers: Whether to apply modifiers from the original object.
+#                             If True, the duplicated object will include the effects of modifiers.
+#                             If False, the duplicated object will have the same mesh data as the original.
+#     :return: Returns the duplicated object in world zero in active scene and collection.
+
+#     """
+#     if name !=None:
+#         name = obj.name
+
+#     if apply_modifiers:
+        
+        
+#         object_new = obj.copy()
+#         object_new.data = obj.data.copy()
+
+#         for collection in obj.users_collection: 
+#             collection.objects.link(object_new)
+            
+#         #SHIT/SLOW VERSION, Other version get gepsgraph + obj.modifiers.clear() was crashing blender
+#         if object_new.modifiers.keys() != []:  
+#             act_obj= bpy.context.active_object
+#             bpy.context.view_layer.objects.active = object_new
+#             for modifier in obj.modifiers: # Apply all modifier
+#                 bpy.ops.object.modifier_apply(modifier=modifier.name, single_user=True)
+#             bpy.context.view_layer.objects.active = act_obj
+
+
+#     else:
+#         object_new = obj.copy()
+#         object_new.data = obj.data.copy()
+
+#         for collection in obj.users_collection: 
+#             collection.objects.link(object_new)
+
+            
+#     if parent != None:
+#         object_new.parent = parent
+
+#     if same_transform == True:
+#         object_new.matrix_world = obj.matrix_world
+#     else:
+#         object_new.matrix_world = Matrix.identity(4)
+
+
+#     # bpy.context.collection.objects.link(object_new) #link to scene
+
+
+
+#     return object_new
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def delete_verts(obj:bpy.types.Object,
