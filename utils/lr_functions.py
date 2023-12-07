@@ -428,8 +428,9 @@ def isl_cent(loops_lst: list,uv_layer,aspect_correction=[1,1]):
 
 
 
-def duplicate_obj(obj:bpy.types.Object, 
-                  name:str = None, 
+def duplicate_obj(obj:bpy.types.Object,
+                  depsgraph = None,
+                  name:str = None,
                   apply_modifiers:bool = True,
                   parent:bpy.types.Object = None,
                   same_transform:bool = True,)->bpy.types.Object:
@@ -451,7 +452,9 @@ def duplicate_obj(obj:bpy.types.Object,
     bm = bmesh.new()
 
     if apply_modifiers:
-        depsgraph = bpy.context.evaluated_depsgraph_get() 
+        if depsgraph == None:
+            depsgraph = bpy.context.evaluated_depsgraph_get() 
+
         bm.from_mesh(obj.evaluated_get(depsgraph).to_mesh())
         # print(f'{len(bm.faces)= }')
     else:

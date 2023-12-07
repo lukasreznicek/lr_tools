@@ -777,9 +777,10 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
 
                 # ------ DUPLICATE ELEMENT ------
-                element = lr_functions.duplicate_obj(obj_evaluated,
+                element = lr_functions.duplicate_obj(obj,
+                                                     depsgraph=depsgraph,
                                                      name=obj.name + '_part' + '_'+str(idx),
-                                                     apply_modifiers=False, #already applying above
+                                                     apply_modifiers=True, #already applying above
                                                      same_transform=True)
                 
                 # ------ REMOVE ALL BUT NEEDED INDEXES ------
