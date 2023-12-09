@@ -24,7 +24,7 @@ bl_info = {
 
 import bpy, os, bmesh, subprocess
 
-from .operators.attributes import OBJECT_OT_lr_add_attribute,OBJECT_OT_lr_remove_attribute, OBJECT_OT_lr_attribute_select_by_index,OBJECT_OT_lr_attribute_select_by_name,OBJECT_OT_lr_set_obj_info_attr,OBJECT_OT_lr_recover_obj_info
+from .operators.attributes import OBJECT_OT_lr_add_attribute,OBJECT_OT_lr_remove_attribute, OBJECT_OT_lr_attribute_select_by_index,OBJECT_OT_lr_attribute_select_by_name,OBJECT_OT_lr_set_obj_info_attr,OBJECT_OT_lr_recover_obj_info,OBJECT_OT_lr_attribute_increment_int_values
 from .operators.unwrap_in_place import LR_Unwrap
 from .operators.set_vertex_color import OBJECT_OT_lr_assign_vertex_color,lr_offset_vertex_color,lr_pick_vertex_color
 from .operators.set_vertex_alpha import lr_vertex_rgb_to_alpha
@@ -236,6 +236,13 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
 
         col_left.scale_y = 1.5
         operator_prop = col_left.operator("lr.assign_vertex_color", icon='PASTEDOWN', text="Set Color")
+
+        #Whether to write into these channels
+        operator_prop['set_r'] = lr_tools.vc_write_to_red
+        operator_prop['set_g'] = lr_tools.vc_write_to_green
+        operator_prop['set_b'] = lr_tools.vc_write_to_blue
+
+
         operator_prop['color_r'] = active_brush.color[0]
         operator_prop['color_r_int'] = int(round(active_brush.color[0] * 255))
 
@@ -245,16 +252,21 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         operator_prop['color_b'] = active_brush.color[2]
         operator_prop['color_b_int'] = int(round(active_brush.color[2] * 255))
 
-        #Whether to write into these channels
-        operator_prop['set_r'] = lr_tools.vc_write_to_red
-        operator_prop['set_g'] = lr_tools.vc_write_to_green
-        operator_prop['set_b'] = lr_tools.vc_write_to_blue
+
 
 
 
         col_right_row = col_right.row(align=True)
         col_right_row.scale_y = 0.75
         operator_prop = col_right_row.operator("lr.assign_vertex_color", icon_value=lr_icons_collection["ico_red"].icon_id, text="")
+        
+        operator_prop['set_r'] = lr_tools.vc_write_to_red
+        operator_prop['set_g'] = lr_tools.vc_write_to_green
+        operator_prop['set_b'] = lr_tools.vc_write_to_blue
+        
+        
+        
+        
         operator_prop['color_r'] = float(1.0)
         operator_prop['color_r_int'] = int(255)
         
@@ -262,10 +274,17 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         operator_prop['color_g_int'] = int(0)
 
         operator_prop['color_b'] = float(0)
-        operator_prop['color_b_int'] = int(0)   
+        operator_prop['color_b_int'] = int(0)  
+         
 
 
         operator_prop = col_right_row.operator("lr.assign_vertex_color", icon_value=lr_icons_collection["ico_green"].icon_id, text="")
+
+        #Whether to write into these channels
+        operator_prop['set_r'] = lr_tools.vc_write_to_red
+        operator_prop['set_g'] = lr_tools.vc_write_to_green
+        operator_prop['set_b'] = lr_tools.vc_write_to_blue
+
         operator_prop['color_r'] = float(0)
         operator_prop['color_r_int'] = int(0)
 
@@ -276,7 +295,13 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         operator_prop['color_b_int'] = int(0)
 
         
+
         operator_prop = col_right_row.operator("lr.assign_vertex_color", icon_value=lr_icons_collection["ico_blue"].icon_id, text="")
+        
+        operator_prop['set_r'] = lr_tools.vc_write_to_red #Whether to write into these channels
+        operator_prop['set_g'] = lr_tools.vc_write_to_green
+        operator_prop['set_b'] = lr_tools.vc_write_to_blue
+
         operator_prop['color_r'] = float(0)
         operator_prop['color_r_int'] = int(0)
 
@@ -288,7 +313,15 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         
         col_right_row = col_right.row(align=True)
         col_right_row.scale_y = 0.75
+        
+        
+        
         operator_prop = col_right_row.operator("lr.assign_vertex_color", icon_value=lr_icons_collection["ico_black"].icon_id, text="")
+
+        operator_prop['set_r'] = lr_tools.vc_write_to_red #Whether to write into these channels
+        operator_prop['set_g'] = lr_tools.vc_write_to_green
+        operator_prop['set_b'] = lr_tools.vc_write_to_blue
+
         operator_prop['color_r'] = float(0)
         operator_prop['color_r_int'] = int(0)
 
@@ -298,7 +331,14 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         operator_prop['color_b'] = float(0)
         operator_prop['color_b_int'] = int(0)
 
+
+
         operator_prop = col_right_row.operator("lr.assign_vertex_color", icon_value=lr_icons_collection["ico_white"].icon_id, text="")
+
+        operator_prop['set_r'] = lr_tools.vc_write_to_red #Whether to write into these channels
+        operator_prop['set_g'] = lr_tools.vc_write_to_green
+        operator_prop['set_b'] = lr_tools.vc_write_to_blue
+
         operator_prop['color_r'] = float(1)
         operator_prop['color_r_int'] = int(255)
 
@@ -494,7 +534,6 @@ class VIEW3D_PT_lr_obj_info(bpy.types.Panel):
         lr_tools_object = context.scene.lr_tools_object
         layout = self.layout.box()
         
-        
         if context.mode == 'EDIT_MESH':
 
             row = layout.row(align=True)
@@ -543,11 +582,14 @@ class VIEW3D_PT_lr_obj_info(bpy.types.Panel):
 
         if context.mode == 'OBJECT':
             row = layout.row(align=True)
+            
             row.operator('object.lr_recover_obj_info', text='Recover Info', icon = 'TRIA_DOWN_BAR')
+            row.scale_y = 1.5
+
+            row = layout.row(align=True)
+            row.operator('geometry.lr_set_per_obj_attribute', text='ID Per Object', icon = 'TRIA_DOWN_BAR')
             
         
-
-
 class VIEW3D_PT_lr_mesh(bpy.types.Panel):
     bl_idname = "OBJECT_PT_lr_mesh"
     bl_label = "MESH"
@@ -563,7 +605,6 @@ class VIEW3D_PT_lr_mesh(bpy.types.Panel):
         layout = self.layout.box()
         row = layout.row(align=True)
         row.operator("mesh.lr_get_edges_length", text="Get edges length", icon = 'MOD_LENGTH')
-
 
 
 class VIEW3D_PT_lr_select_uv(bpy.types.Panel):
@@ -603,7 +644,6 @@ class VIEW3D_PT_lr_select_uv(bpy.types.Panel):
         row.prop(lr_tools, "name_to_uv_index_set",icon_only=True)
 
 
-
 class VIEW3D_PT_lr_move_uv(bpy.types.Panel):
     bl_label = "Move"
     bl_idname = "OBJECT_PT_lr_uv"
@@ -614,8 +654,8 @@ class VIEW3D_PT_lr_move_uv(bpy.types.Panel):
     bl_category = "LR"
     #	bl_context = "object"
     bl_options = {'DEFAULT_CLOSED'}
+    
     def draw(self, context):
-        
         layout = self.layout #UV Move
         lr_tools = context.scene.lr_tools
         # layout.label(text="UV Move")
@@ -623,7 +663,6 @@ class VIEW3D_PT_lr_move_uv(bpy.types.Panel):
         row = layout.row(align=True)
         row.operator("object.mono_move_uv_map_up", text="Move Up", icon='TRIA_UP')
         row.operator("object.mono_move_uv_map_down", text="Move Down", icon = 'TRIA_DOWN')
-
 
 
 class VIEW3D_PT_lr_rename_uv(bpy.types.Panel):
@@ -644,7 +683,6 @@ class VIEW3D_PT_lr_rename_uv(bpy.types.Panel):
         row = layout.row(align=True)
         row.operator("object.lr_rename_active_uv_set", text="Rename:", icon ='FILE_TEXT')
         row.prop(lr_tools, "uv_map_rename",icon_only=True)
-
 
 
 class DATA_PT_lr_attribute_extend(bpy.types.Panel):
@@ -669,7 +707,6 @@ class DATA_PT_lr_attribute_extend(bpy.types.Panel):
         #row.operator("geometry.lr_select_attribute_by_index", text="Select by Index", icon ='PASTEDOWN')
 
         # Mark the operator properties as user-adjustable
-
 
 
 class VIEW3D_PT_lr_add_remove_uv(bpy.types.Panel):
@@ -704,8 +741,7 @@ class VIEW3D_PT_lr_add_remove_uv(bpy.types.Panel):
         c_row = col.row(align=True)
         c_row.operator("object.lr_remove_uv_by_name", text="Remove:", icon ='REMOVE')
         c_row.prop(lr_tools, "uv_map_delete_by_name",icon_only=True)
-        
-        
+                
 
 class OPN_OT_open_folder(Operator):
     """Opens Current Folder"""
@@ -793,7 +829,8 @@ classes = (AddonPreferences,
             OBJECT_OT_lr_attribute_select_by_index,
             OBJECT_OT_lr_attribute_select_by_name,
             OBJECT_OT_lr_set_obj_info_attr,
-            OBJECT_OT_lr_recover_obj_info
+            OBJECT_OT_lr_recover_obj_info,
+            OBJECT_OT_lr_attribute_increment_int_values
 
             )
 

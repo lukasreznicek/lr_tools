@@ -342,19 +342,14 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
     
 
 
-
-    
 class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
-    '''
-    
-    Breaks selected objects into subcomponent based on values in Elements attribute.
+    '''Breaks selected objects into subcomponent based on values in Elements attribute.
     
     Whole number = Subelement index, this list includes indexes mentioned below
     .1 = subelement pivot point.
     .2 = Subelement X axis.
     .3 = Subelement Y axis.
-    ._01 = Second and third decimal is parent subelement index. If unspecified parent is index 0.
-    '''
+    ._01 = Second and third decimal is parent subelement index. If unspecified parent is index 0'''
 
 
     bl_idname = "object.lr_recover_obj_info"
@@ -381,11 +376,10 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
         wm = context.window_manager
         return wm.invoke_props_dialog(self)
 
-            
-
-
+        
     def execute(self, context): 
         
+        @staticmethod
         def parent_objects(child_obj, parent_obj):
             # Store the child object's world matrix
             child_world_matrix = child_obj.matrix_world.copy()
@@ -527,6 +521,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
             if is_object == False:
                 bpy.context.object.mode = store_mode
+        
         @staticmethod
         def get_global_vector_position(obj, vector):
             """
@@ -545,6 +540,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             
             return obj.matrix_world @ vector
         
+        @staticmethod
         def average_vectors(list_of_vectors:list): 
 
             local_vertex_co = Vector((0.0, 0.0, 0.0))
@@ -553,7 +549,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 local_vertex_co += vector
 
             return local_vertex_co / len(list_of_vectors)
-
 
         @staticmethod
         def element_separate(obj,element_indexes,parent = None, origin_coords = None):
@@ -614,27 +609,26 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             
             return obj_separated
 
-
         objs = bpy.context.selected_objects
         
         depsgraph = bpy.context.evaluated_depsgraph_get()
-            
+
+
         for obj in objs:
-
             # obj.data = obj.data.copy() #Make object unique. Remove instancing.
-            
             # # print(f'{obj.data.users = }')
-
             # act_obj = bpy.context.active_object
             # bpy.context.view_layer.objects.active = obj
             # for modifier in obj.modifiers: # Apply all modifier
             #     bpy.ops.object.modifier_apply(modifier=modifier.name)
             # bpy.context.view_layer.objects.active = act_obj
-            
+
             obj_evaluated = obj.evaluated_get(depsgraph)  #modifiers need to be applied before taking eny info from them such as coordinates. .co does not include modifiers.
             
-        # print(f'{len(bm.faces)= }')
-
+            if obj.parent:
+                init_parent = obj.parent
+            else:
+                init_parent = None
 
             attribute = obj_evaluated.data.attributes.get(self.src_attr_name)
 
@@ -802,12 +796,15 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 set_origin_rotation(element,rotational_matrix.to_4x4())
 
 
-            # ------------  SELECT MAKE ID0 ACTIVE AND PARENT  ------------
+            # ------------  SELECT ALL, MAKE ID0 ACTIVE AND PARENT  ------------
             for idx in attr_info_ordered:
                     
                 attr_info_ordered[idx]['object'].select_set(True)
                 if idx == 0:
                     bpy.context.view_layer.objects.active = attr_info_ordered[idx]['object']
+                    
+                    if init_parent != None: #Set Index 0 as a child of the original parent.
+                        parent_objects(attr_info_ordered[idx]['object'],init_parent)
 
                 if attr_info_ordered[idx]['parent_element_id'] != None: 
 
@@ -816,9 +813,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                         parent_objects(attr_info_ordered[idx]['object'], attr_info_ordered[parent_id]['object']) 
 
 
-
-            # for element in attr_info_ordered:
-            #     print(f'ATTRIBUTE INFO #{element}: \n{attr_info_ordered[element]}')
 
             #Remove original object
             for col in obj.users_collection:
@@ -833,3 +827,30 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
 
 
+
+class OBJECT_OT_lr_attribute_increment_int_values(bpy.types.Operator):
+    '''On Active attribute\nMultiple object selection. Active int attributes will be incremented on vertex domain per object. Decimal values stay unchanged.\nActive object gets 0'''
+    bl_idname = "geometry.lr_set_per_obj_attribute"
+    bl_label = "Increments int attribute on vertex domain"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+
+    @classmethod
+    def poll(cls, context): 
+        return context.mode == 'OBJECT' or context.mode == 'EDIT_MESH'
+        
+    # def invoke(self, context, event):
+    #     wm = context.window_manager
+    #     return wm.invoke_props_dialog(self)
+
+    def execute(self, context):
+        selected_objects = bpy.context.selected_objects
+        selected_objects.remove(bpy.context.active_object)
+        selected_objects.insert(0,bpy.context.active_object) #Make sure active object is first in the list
+
+        for index,obj in enumerate(selected_objects):
+            for attribute in obj.data.attributes.active.data:
+                attribute.value = attribute.value%1.0 + index
+
+        return {'FINISHED'}
