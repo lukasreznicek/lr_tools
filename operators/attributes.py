@@ -1,6 +1,7 @@
 import bpy,bmesh
 from ..utils import lr_functions
 
+
 class OBJECT_OT_lr_add_attribute(bpy.types.Operator):
     '''Adds a new attribute to all selected objects'''
     bl_idname = "geometry.lr_add_attribute"
@@ -243,7 +244,11 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
     def execute(self, context):
 
         def modify_decimal_at_index(number, new_decimal, decimal_index):
+            
             # Convert the number to a string
+            number = round(number,4) #5 decimals are loosing precision needs to be rounded to 4
+
+
             number_str = "{:.6f}".format(number)
 
             # Find the position of the decimal point
