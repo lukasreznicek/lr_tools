@@ -243,6 +243,34 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
 
     def execute(self, context):
 
+        @staticmethod
+        def change_digit(original_number, position_from_right, new_value):
+            # Extract the digits from the original number
+            
+            if original_number <= 999:
+                original_number = 1111
+
+            original_number = int(original_number)
+            digits = [int(digit) for digit in str(original_number)]
+
+            # Change the digit at the specified position from the right
+            if position_from_right < len(digits):
+                digits[-position_from_right - 1] = new_value
+            else:
+                raise ValueError("Position from right exceeds the number of digits in the original number.")
+
+            # Recreate the new number
+            new_number = int(''.join(map(str, digits)))
+
+            return new_number
+
+        # def get_digit(position):
+        #     attr_val_y_1 = int(data.vector[1] % 10)            #Z      (Get Ones)
+        #     attr_val_y_2 = int(data.vector[1] // 10 % 10)      #Y      (Get Tens)
+        #     attr_val_y_3 = int(data.vector[1] // 100 % 10)     #X      (Get Hundreds)
+        #     attr_val_y_4 = int(data.vector[1] // 1000 % 10)    #Pivot  (Get Thousands)
+
+
         def modify_decimal_at_index(number, new_decimal, decimal_index):
             
             # Convert the number to a string
@@ -264,7 +292,6 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
                 # If the number has no decimal point, return the original number
                 return number
 
-
         def get_digit_at_decimal_place(number, decimal_place):
             # Shift the decimal point to the right by the specified decimal place
             shifted_number = number * (10 ** decimal_place)
@@ -281,12 +308,11 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
                 obj_attr = obj.data.attributes.get(self.attr_name)
 
                 if obj_attr != None:
-                    if obj_attr.domain != 'POINT' or obj_attr.data_type != 'FLOAT': #If attribute with this name is present. Rename if incorrect and make new one.
-                        print('Creating')
+                    if obj_attr.domain != 'POINT' or obj_attr.data_type != 'FLOAT_VECTOR': #If attribute with this name is present. Rename if incorrect and make new one.
                         obj_attr.name = self.attr_name+'_Del'
-                        obj.data.attributes.new(self.attr_name,type='FLOAT', domain='POINT')
+                        obj.data.attributes.new(self.attr_name,type='FLOAT_VECTOR', domain='POINT')
                 else:
-                    obj.data.attributes.new(self.attr_name,type='FLOAT', domain='POINT')
+                    obj.data.attributes.new(self.attr_name,type='FLOAT_VECTOR', domain='POINT')
 
 
                 if bpy.context.mode == 'OBJECT':
@@ -296,7 +322,7 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
                     bm = bmesh.from_edit_mesh(obj.data)
 
                 # #Create if not present 
-                bm_layer = bm.verts.layers.float[self.attr_name]
+                bm_layer = bm.verts.layers.float_vector[self.attr_name]
                 # print(f"{bm_layer= }")
                 # if bm_layer == None:
                 #     bm_layer = bm.verts.layers.float.new(self.attr_name)
@@ -307,34 +333,34 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
                         
                         if self.store_mode == 'ORIGIN':
                             if self.enable == True:
-                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 1, 0)
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 3, 2)
                             else:
-                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 3, 1)
                         
                         elif self.store_mode == 'X_AXIS':
                             if self.enable == True:
-                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 2, 0)
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 2, 2)
                             else:
-                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 2, 1)
+
                         elif self.store_mode == 'Y_AXIS':
                             if self.enable == True:
-                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 3, 0)
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 1, 2)
                             else:
-                                vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
-                        
-                        elif self.store_mode == 'ELEMENT_INDEX':
-                            vert[bm_layer] = vert[bm_layer] = obj_index + round(vert[bm_layer] - int(vert[bm_layer]),6)
-                    
-                    # else:
-                    #     if self.store_mode == 'PIVOT':
-                    #         if get_digit_at_decimal_place(vert[bm_layer], 1) == 1: #Reset to 0 if value 1 is present at first decimal place on unselected vertex.
-                    #             vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
-                    #     elif self.store_mode == 'X_AXIS':
-                    #         if get_digit_at_decimal_place(vert[bm_layer], 1) == 2: #Reset to 0 if value 2 is present at first decimal place. 
-                    #             vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
-                    #     elif self.store_mode == 'Y_AXIS':
-                    #         if get_digit_at_decimal_place(vert[bm_layer], 1) == 3: #Reset to 0 if value 3 is present at first decimal place. 
-                    #             vert[bm_layer] = modify_decimal_at_index(vert[bm_layer], 0, 0)
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 1, 1)
+
+                        elif self.store_mode == 'Z_AXIS':
+                            if self.enable == True:
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 0, 2)
+                            else:
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 0, 1)
+
+
+                        # elif self.store_mode == 'ELEMENT_INDEX':
+                        #     pass
+                        #     # vert[bm_layer] = obj_index + round(vert[bm_layer] - int(vert[bm_layer]),6)
+                        #     vert[bm_layer][0] = change_digit(vert[bm_layer], 0, 1)
+
 
                 if bpy.context.mode == 'OBJECT':
                     bm.to_mesh(obj.data)
@@ -350,12 +376,14 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
 class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
     '''Breaks selected objects into subcomponent based on values in Elements attribute.
     
-    Whole number = Subelement index, this list includes indexes mentioned below
-    .1 = subelement pivot point.
-    .2 = Subelement X axis.
-    .3 = Subelement Y axis.
-    ._01 = Second and third decimal is parent subelement index. If unspecified parent is index 0'''
+    Vector3
 
+    X = Object Index
+    Y = X Vector
+    Z = Y Vector
+    W = Parent ID
+    
+    '''
 
     bl_idname = "object.lr_recover_obj_info"
     bl_label = "Get object position and rotation from stored data inside attribute"
@@ -373,6 +401,13 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
         default='ObjInfo',
     )
 
+
+    fix_left_handed_axis: bpy.props.BoolProperty(
+        name = "Fix Axis",
+        description = "If resulting axis is left handed, invert Y axis making it right handed. This will prevent negative scaling or flipped normals.",
+        default = True,
+    )
+
     # @classmethod
     # def poll(cls, context): 
     #     return context.mode == 'OBJECT' or context.mode == 'EDIT_MESH'
@@ -384,6 +419,24 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
         
     def execute(self, context): 
         
+
+        @staticmethod
+        def change_digit(original_number, position_from_right, new_value):
+            # Extract the digits from the original number
+            digits = [int(digit) for digit in str(original_number)]
+
+            # Change the digit at the specified position from the right
+            if position_from_right < len(digits):
+                digits[-position_from_right - 1] = new_value
+            else:
+                raise ValueError("Position from right exceeds the number of digits in the original number.")
+
+            # Recreate the new number
+            new_number = int(''.join(map(str, digits)))
+
+            return new_number
+        
+
         @staticmethod
         def parent_objects(child_obj, parent_obj):
             # Store the child object's world matrix
@@ -431,6 +484,23 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             z_vector = v1.cross(v2)
             z_vector.normalize()
             return z_vector
+        
+        @staticmethod
+        def is_right_handed(v1, v2, v3):
+            # Cross product of v1 and v2
+            cross_product = v1.cross(v2) #order matters
+            
+            # Dot product of the cross product and v3
+            dot_product = cross_product.dot(v3)
+            
+            # Check the sign of the dot product
+            if dot_product > 0:
+                return True
+            elif dot_product < 0:
+                return False
+            else:
+                return None
+
 
         @staticmethod
         def set_origin_rotation(obj, rotation_matrix_to):
@@ -643,43 +713,53 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 continue
 
 
-            
-
-            # 0  = Parent object, 
-            # Whole number = subelement index, this list includes indexes mentioned below
-            # .1 = subelement pivot point.
-            # .2 = Subelement X axis.
-            # .3 = Subelement Y axis.
             attr_info = {}
-            sub_element_len = 0
+            # sub_element_len = 0
             for index,data in enumerate(attribute.data):
-                i_val = round(data.value,3)
-                # print(f'ATTRIBUTE DATA: \n{i_val}')
-                i_val_int = int(i_val)
+                
+                if int(data.vector[1]) == 0 or int(data.vector[1] <= 999):
+                    data.vector[1] = 1111.0
 
-                if i_val_int not in attr_info:
-                    attr_info[i_val_int] = {
+                attr_val_x = int(data.vector[0])                   #Mesh ID
+                               
+                attr_val_y_1 = int(data.vector[1] % 10)            #Z      (Get Ones)
+                attr_val_y_2 = int(data.vector[1] // 10 % 10)      #Y      (Get Tens)
+                attr_val_y_3 = int(data.vector[1] // 100 % 10)     #X      (Get Hundreds)
+                attr_val_y_4 = int(data.vector[1] // 1000 % 10)    #Pivot  (Get Thousands)
+                
+                i_val_z = int(data.vector[2])                   #Parent Mesh ID
+                
+
+                if attr_val_x not in attr_info: #Create new if mesh ID not present already
+                    attr_info[attr_val_x] = {
                         'index': [],
                         'pivot_index': [],
                         'x_axis_index': [],
                         'y_axis_index': [],
+                        'z_axis_index': [], #(Optional)
                         'parent_element_id': None,
                         'object':None
                     }
 
-                attr_info[i_val_int]['index'].append(index)
+                attr_info[attr_val_x]['index'].append(index)
 
-                if round(i_val%1,1) == 0.1:
-                    sub_element_len += 1
-                    attr_info[i_val_int]['pivot_index'].append(index) #Vertex index that belongs to Pivot. Find: vertex[index].co
-                    attr_info[i_val_int]['parent_element_id'] = int(100*(round(i_val*10%1,2))) #This number points to a key in this dictionary. (Parent obj).
-                if round(i_val%1,1) == 0.2:
-                    attr_info[i_val_int]['x_axis_index'].append(index) #Vertex index where x axis points to.
-                if round(i_val%1,1) == 0.3:
-                    attr_info[i_val_int]['y_axis_index'].append(index) #Vertex index where Y axis points to.
+                attr_info[attr_val_x]['parent_element_id'] = i_val_z
+
+                if attr_val_y_4 == 2:
+                    # sub_element_len += 1
+                    attr_info[attr_val_x]['pivot_index'].append(index) #Vertex index that belongs to Pivot. Find: vertex[index].co
+                    # attr_info[i_val_int]['parent_element_id'] = int(100*(round(i_val*10%1,2))) #This number points to a key in this dictionary. (Parent obj).
+                
+                if attr_val_y_3 == 2:
+                    attr_info[attr_val_x]['x_axis_index'].append(index) #Vertex index where x axis points to.
+                
+                if attr_val_y_2 == 2:
+                    attr_info[attr_val_x]['y_axis_index'].append(index) #Vertex index where Y axis points to.
+
+                if attr_val_y_1 == 2:
+                    attr_info[attr_val_x]['z_axis_index'].append(index) #Vertex index where Y axis points to.
 
             attr_info_ordered = OrderedDict(sorted(attr_info.items(), key=lambda x: x[0]))
-
 
 
             pivot_position = []
@@ -733,15 +813,15 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 y_axis_idx_len = len(attr_info_ordered[idx]['y_axis_index'])
                 if y_axis_idx_len == 1: 
                     y_axis_vector_local = obj_evaluated.data.vertices[attr_info_ordered[idx]['y_axis_index'][0]].co
-                    
+
                     directional_vector_y = (obj_evaluated.matrix_world @ y_axis_vector_local) - (obj_evaluated.matrix_world @ origin_vector_local_avg) 
-                
+
                 elif y_axis_idx_len > 1: #Averaged version
                     y_axis_vectors_local = [obj_evaluated.data.vertices[vert_idx].co for vert_idx in attr_info_ordered[idx]['y_axis_index']]
                     y_axis_vector_local_avg = average_vectors(y_axis_vectors_local)
-                    
+
                     directional_vector_y = (obj_evaluated.matrix_world @ y_axis_vector_local_avg) - (obj_evaluated.matrix_world @ origin_vector_local_avg)
-                
+
                 else:
                     self.report({'ERROR'}, "Missing Y Axis Attribute")
                     continue
@@ -757,8 +837,15 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
                 orthagonal_xyz_axis =gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
                 
+                if self.fix_left_handed_axis:
+                    right = is_right_handed(orthagonal_xyz_axis[0], orthagonal_xyz_axis[1], orthagonal_xyz_axis[2]) #Check if is right hand coord system
+                    if right == False:
+                        orthagonal_xyz_axis[1].negate() #Currently flipping Y axis but could be any axis
+
+
                 #Rotational matrix from orthagonal axis vectors
                 rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
+
 
                 if self.remove_extra: #Remove verticies which belong to pivot point x axis and y axis. 
                     for vert_idx in attr_info_ordered[idx]['x_axis_index']:
@@ -769,10 +856,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 
                     for vert_idx in attr_info_ordered[idx]['pivot_index']:
                         attr_info_ordered[idx]['index'].remove(vert_idx)
-
-
-
-
 
 
                 # ------ DUPLICATE ELEMENT ------
@@ -805,13 +888,13 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             for idx in attr_info_ordered:
                     
                 attr_info_ordered[idx]['object'].select_set(True)
-                if idx == 0:
+                if idx == 0 or attr_info_ordered[idx]['parent_element_id'] == 0.0:
                     bpy.context.view_layer.objects.active = attr_info_ordered[idx]['object']
                     
                     if init_parent != None: #Set Index 0 as a child of the original parent.
                         parent_objects(attr_info_ordered[idx]['object'],init_parent)
 
-                if attr_info_ordered[idx]['parent_element_id'] != None: 
+                if attr_info_ordered[idx]['parent_element_id'] != 0.0: 
 
                     if attr_info_ordered[idx]['parent_element_id'] != idx:
                         parent_id = attr_info_ordered[idx]['parent_element_id']
@@ -825,12 +908,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
             bpy.data.objects.remove(obj)
             
-
-
         return {'FINISHED'}
-
-
-
 
 
 class OBJECT_OT_lr_attribute_increment_int_values(bpy.types.Operator):
@@ -856,6 +934,70 @@ class OBJECT_OT_lr_attribute_increment_int_values(bpy.types.Operator):
 
         for index,obj in enumerate(selected_objects):
             for attribute in obj.data.attributes.active.data:
-                attribute.value = attribute.value%1.0 + index
+                attribute.vector[0] = index
+
+        return {'FINISHED'}
+
+class OBJECT_OT_lr_attribute_increment_values_mesh(bpy.types.Operator):
+    '''On Active attribute\nMultiple object selection. Active int attributes will be incremented on vertex domain per mesh.\nActive object gets 0'''
+    bl_idname = "geometry.lr_set_per_mesh_island_attribute"
+    bl_label = "Increments int attribute on vertex domain"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context): 
+        return context.mode == 'OBJECT' or context.mode == 'EDIT_MESH'
+
+    attr_name: bpy.props.StringProperty(
+        name="Source Attribute",
+        description="Attribute with stored obj info data",
+        default='ObjInfo',
+    )
+    # def invoke(self, context, event):
+    #     wm = context.window_manager
+    #     return wm.invoke_props_dialog(self)
+
+
+    def execute(self, context):
+        selected_objects = bpy.context.selected_objects
+        selected_objects.remove(bpy.context.active_object)
+        selected_objects.insert(0,bpy.context.active_object) #Make sure active object is first in the list
+        objects_eval = {}
+
+        for index,obj in enumerate(selected_objects):
+            obj_index = objects_eval.get('index')
+            if obj_index is None:
+                objects_eval[index] = {}
+                objects_eval[index]['elements_poly_indexes'] = None
+                objects_eval[index]['object'] = None
+                
+            objects_eval[index]['elements_poly_indexes'] = lr_functions.get_vertex_islands(obj)
+            objects_eval[index]['object'] = obj
+        
+        # bm = bmesh.new()
+        # bm.from_mesh(obj.data)
+
+        element_id = 0
+        for obj_index in objects_eval:
+            
+            bm = bmesh.new()
+            bm.from_mesh(objects_eval[obj_index]['object'].data)
+            bm_layer = bm.verts.layers.float_vector.get(self.attr_name)
+            if bm_layer == None:
+                bm_layer = bm.verts.layers.float_vector.new(self.attr_name)
+            
+                
+            for element in objects_eval[obj_index]['elements_poly_indexes']:
+                for vert_id in element:
+                    bm.verts.ensure_lookup_table()
+                    bm.verts[vert_id][bm_layer][0] = element_id
+                element_id +=1
+ 
+            bm.to_mesh(objects_eval[obj_index]['object'].data)
+            bm.free()      
+
+        # for index,obj in enumerate(selected_objects):
+        #     for attribute in obj.data.attributes.active.data:
+        #         attribute.vector[0] = index
 
         return {'FINISHED'}

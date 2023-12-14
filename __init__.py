@@ -24,7 +24,7 @@ bl_info = {
 
 import bpy, os, bmesh, subprocess
 
-from .operators.attributes import OBJECT_OT_lr_add_attribute,OBJECT_OT_lr_remove_attribute, OBJECT_OT_lr_attribute_select_by_index,OBJECT_OT_lr_attribute_select_by_name,OBJECT_OT_lr_set_obj_info_attr,OBJECT_OT_lr_recover_obj_info,OBJECT_OT_lr_attribute_increment_int_values
+from .operators.attributes import OBJECT_OT_lr_add_attribute,OBJECT_OT_lr_attribute_increment_values_mesh,OBJECT_OT_lr_remove_attribute, OBJECT_OT_lr_attribute_select_by_index,OBJECT_OT_lr_attribute_select_by_name,OBJECT_OT_lr_set_obj_info_attr,OBJECT_OT_lr_recover_obj_info,OBJECT_OT_lr_attribute_increment_int_values
 from .operators.unwrap_in_place import LR_Unwrap
 from .operators.set_vertex_color import OBJECT_OT_lr_assign_vertex_color,lr_offset_vertex_color,lr_pick_vertex_color
 from .operators.set_vertex_alpha import lr_vertex_rgb_to_alpha
@@ -588,7 +588,9 @@ class VIEW3D_PT_lr_obj_info(bpy.types.Panel):
 
             row = layout.row(align=True)
             row.operator('geometry.lr_set_per_obj_attribute', text='ID Per Object', icon = 'TRIA_DOWN_BAR')
-            
+            row = layout.row(align=True)
+            row.operator('geometry.lr_set_per_mesh_island_attribute', text='ID Per Mesh Island', icon = 'TRIA_DOWN_BAR')
+
         
 class VIEW3D_PT_lr_mesh(bpy.types.Panel):
     bl_idname = "OBJECT_PT_lr_mesh"
@@ -830,7 +832,8 @@ classes = (AddonPreferences,
             OBJECT_OT_lr_attribute_select_by_name,
             OBJECT_OT_lr_set_obj_info_attr,
             OBJECT_OT_lr_recover_obj_info,
-            OBJECT_OT_lr_attribute_increment_int_values
+            OBJECT_OT_lr_attribute_increment_int_values,
+            OBJECT_OT_lr_attribute_increment_values_mesh
 
             )
 

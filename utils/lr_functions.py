@@ -425,7 +425,161 @@ def isl_cent(loops_lst: list,uv_layer,aspect_correction=[1,1]):
 
 
 
+def get_face_islands(obj):
+    '''
+    Returns a list of lists. Each list is a face id of a specific island.
+    '''
+    mode = bpy.context.mode
+    if mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+    # # Make sure the object is in Edit mode
+    # bpy.ops.object.mode_set(mode='EDIT')
+    
+    
 
+    # Get the mesh data
+    mesh = obj.data
+
+    # # Create a BMesh from the mesh data
+    # bm = bmesh.from_edit_mesh(mesh)
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+
+    # List to store face island groups
+    face_islands = []
+
+    # Set to keep track of visited faces
+    visited_faces = set()
+
+    # Iterate through the faces
+    for face in bm.faces:
+        # Skip faces that have already been visited
+        if face.index in visited_faces:
+            continue
+
+        # Create a new face island
+        island_faces = set()
+        stack = [face]
+
+        while stack:
+            current_face = stack.pop()
+            visited_faces.add(current_face.index)
+            island_faces.add(current_face.index)
+
+            # Find neighboring faces
+            for edge in current_face.edges:
+                for neighbor_face in edge.link_faces:
+                    if neighbor_face.index not in visited_faces:
+                        stack.append(neighbor_face)
+
+        # Add the current face island to the list
+        face_islands.append(list(island_faces))
+
+    # # Switch back to Object mode
+    # bpy.ops.object.mode_set(mode='OBJECT')
+    if mode != 'OBJECT':
+        if mode == 'EDIT_MESH':
+            mode = 'EDIT'
+        if mode == 'PAINT_VERTEX':
+            mode == 'VERTEX_PAINT'
+        bpy.ops.object.mode_set(mode=mode)
+    return face_islands
+
+def get_vertex_islands(obj):
+    '''
+    Returns a list of lists. Each list is a vertex id of a specific island.
+    '''
+    mode = bpy.context.mode
+    if mode != 'OBJECT':
+        bpy.ops.object.mode_set(mode='OBJECT')
+
+    # Get the mesh data
+    mesh = obj.data
+
+    # Create a BMesh from the mesh data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+
+    # List to store vertex island groups
+    vertex_islands = []
+
+    # Set to keep track of visited vertices
+    visited_vertices = set()
+
+    # Iterate through the vertices
+    for vert in bm.verts:
+        # Skip vertices that have already been visited
+        if vert.index in visited_vertices:
+            continue
+
+        # Create a new vertex island
+        island_vertices = set()
+        stack = [vert]
+
+        while stack:
+            current_vert = stack.pop()
+            visited_vertices.add(current_vert.index)
+            island_vertices.add(current_vert.index)
+
+            # Find neighboring vertices
+            for linked_edge in current_vert.link_edges:
+                for linked_vert in linked_edge.verts:
+                    if linked_vert.index not in visited_vertices:
+                        stack.append(linked_vert)
+
+        # Add the current vertex island to the list
+        vertex_islands.append(list(island_vertices))
+
+    # Switch back to the original mode
+    if mode != 'OBJECT':
+        if mode == 'EDIT_MESH':
+            mode = 'EDIT'
+        if mode == 'PAINT_VERTEX':
+            mode == 'VERTEX_PAINT'
+        bpy.ops.object.mode_set(mode=mode)
+
+    return vertex_islands
+
+
+def set_attribute(obj,name, domain,data_type, new_value, data_type_position = None):
+    '''
+    domain: POINT,EDGE,FACE,CORNER
+    data_type:'FLOAT, 'INT', 'FLOAT_VECTOR', 'FLOAT_COLOR', 'BOOLEAN','STRING'
+    
+    position: in case of a vector, position must be specified
+    '''
+
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+
+
+    if domain == 'POINT':
+        if data_type == 'FLOAT_VECTOR':
+            bm_layer = bm.verts.layers.float_vector.get(name)
+            if bm_layer == None:
+                bm_layer = bm.verts.layers.float_vector.new(name)
+
+            for vert in bm.verts:
+                vert[bm_layer][data_type_position] = new_value
+
+        if data_type == 'FLOAT_COLOR':
+            bm_layer = bm.verts.layers.float_color.get(name)
+            if bm_layer == None:
+                bm_layer = bm.verts.layers.float_color.new(name)
+
+            for vert in bm.verts:
+                vert[bm_layer][data_type_position] = new_value
+
+        if data_type == 'FLOAT':
+            bm_layer = bm.verts.layers.float.get(name)
+            if bm_layer == None:
+                bm_layer = bm.verts.layers.float.new(name)
+
+            for vert in bm.verts:
+                vert[bm_layer] = new_value         
+
+    bm.to_mesh(obj.data)
+    bm.free()  
 
 
 def duplicate_obj(obj:bpy.types.Object,

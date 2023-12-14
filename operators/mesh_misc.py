@@ -250,18 +250,21 @@ class OBJECT_OT_lr_assign_checker(bpy.types.Operator):
         texture_path = None
 
         texture_name = 'T_CheckerMap_A.png'
+        # print(os.path.dirname(os.path.realpath(__file__)))
+
 
         #Find script folder with addon
         for path in script_folder:
-            
-            print(f"path: {path}")
-            
             path = os.path.join(path,'addons')
             if os.path.exists(path):
                 if 'lr_tools' in os.listdir(path):
                     texture_full_path = os.path.join(path,'lr_tools','textures',texture_name)
-                    print(f'{texture_full_path= }')
-
+                elif 'lr_tools-master' in os.listdir(path):
+                    texture_full_path = os.path.join(path,'lr_tools-master','textures',texture_name)
+                else:
+                    message = 'Addon folder name in scripts directory should be: lr_tools. Please Rename.'
+                    self.report({'ERROR'}, message)
+                    return {'FINISHED'}
         #Load image
         bpy.data.images.load(texture_full_path, check_existing=True)
         
