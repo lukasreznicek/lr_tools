@@ -453,7 +453,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             v1,v2,v3 = Vectors for X,Y,Z axis. 
             """
             # Create the rotational matrix
-            return Matrix((v1, v2, v3)).transposed()
+            return Matrix((v1, v2, v3)).transposed() #Flip rows into columns. So v1 is in first column instead of a first row.
 
         @staticmethod
         def gram_schmidt_orthogonalization(v1, v2, v3):
@@ -500,7 +500,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 return False
             else:
                 return None
-
 
         @staticmethod
         def set_origin_rotation(obj, rotation_matrix_to):
@@ -720,18 +719,26 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             # sub_element_len = 0
             for index,data in enumerate(attribute.data):
                 
-                if int(data.vector[1]) == 0 or int(data.vector[1] <= 999):
+                if int(data.vector[1]) == 0 or int(data.vector[1] <= 999): #Check attribute format. If attribute value is 0 set it to default 1111
                     data.vector[1] = 1111.0
 
-                attr_val_x = int(data.vector[0])                   #Mesh ID
-                               
-                attr_val_y_1 = int(data.vector[1] % 10)            #Z      (Get Ones)
-                attr_val_y_2 = int(data.vector[1] // 10 % 10)      #Y      (Get Tens)
-                attr_val_y_3 = int(data.vector[1] // 100 % 10)     #X      (Get Hundreds)
-                attr_val_y_4 = int(data.vector[1] // 1000 % 10)    #Pivot  (Get Thousands)
+
+
+                # ------------ Create dictionary where vertex index is picked based on its attribute value. ------------
                 
-                i_val_z = int(data.vector[2])                   #Parent Mesh ID
-                
+                #X Channel of vector attribute
+                attr_val_x = int(data.vector[0])                    #Mesh ID
+
+                #Y channel of vector attribute.1111 format. 1 = False, 2 = True
+                attr_val_y_1 = int(data.vector[1] % 10)             #Z Axis Direction   (Get Ones)      
+                attr_val_y_2 = int(data.vector[1] // 10 % 10)       #Y Axis Direction   (Get Tens) 
+                attr_val_y_3 = int(data.vector[1] // 100 % 10)      #X Axis Direction   (Get Hundreds)  
+                attr_val_y_4 = int(data.vector[1] // 1000 % 10)     #Pivot Position     (Get Thousands) 
+
+                #Z Channel of vector attribute
+                i_val_z = int(data.vector[2])                       #Parent Mesh ID
+
+
 
                 if attr_val_x not in attr_info: #Create new if mesh ID not present already
                     attr_info[attr_val_x] = {
@@ -765,10 +772,8 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             attr_info_ordered = OrderedDict(sorted(attr_info.items(), key=lambda x: x[0]))
 
 
-            pivot_position = []
 
             for idx in attr_info_ordered: #idx is int
-
 
 
                 # ------------------ GET ORIGIN LOCAL AND GLOBAL POSITION FROM VERTEX INDEXES + AVERAGED VERSION ------------------
@@ -792,6 +797,8 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
                 # ------------------ ORIGIN ROTATION GET ------------------
 
+
+                # if attr_info_ordered[idx]['x_axis_index']:
                 # ------ Get Directional Vector X from  vertex positions + averaged version ------
                 x_axis_idx_len = len(attr_info_ordered[idx]['x_axis_index'])
                 if x_axis_idx_len == 1: # No need to average vectors if only one vert index.
@@ -835,7 +842,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                     directional_vector_z = obj_evaluated.data.vertices[attr_info_ordered[idx]['pivot_index'][0]].normal @ obj_evaluated.matrix_world.inverted()
                     directional_vector_z = directional_vector_z.normalized()
                 else:
-                    self.report({'ERROR'}, "Missing pivot position. Vert _.1")
+                    self.report({'ERROR'}, "Missing pivot position.")
                     continue
 
                 orthagonal_xyz_axis =gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
@@ -867,7 +874,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                                                      name=obj.name + '_part' + '_'+str(idx),
                                                      apply_modifiers=True, #already applying above
                                                      same_transform=True)
-                
+
                 # ------ REMOVE ALL BUT NEEDED INDEXES ------
                 lr_functions.delete_verts(element,attr_info_ordered[idx]['index'],invert=True)
 
@@ -884,12 +891,13 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                                          origin_vector_global_avg[2])
 
                 # ------------ SET ORIGIN ROTATION ------------
+
                 set_origin_rotation(element,rotational_matrix.to_4x4())
 
 
             # ------------  SELECT ALL, MAKE ID0 ACTIVE AND PARENT  ------------
             for idx in attr_info_ordered:
-                    
+
                 attr_info_ordered[idx]['object'].select_set(True)
                 if idx == 0 or attr_info_ordered[idx]['parent_element_id'] == 0.0:
                     bpy.context.view_layer.objects.active = attr_info_ordered[idx]['object']
