@@ -705,6 +705,9 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             else:
                 init_parent = None
 
+            init_children = obj.children
+
+
             attribute = obj_evaluated.data.attributes.get(self.src_attr_name)
 
             if attribute == None:
@@ -899,8 +902,14 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                     if attr_info_ordered[idx]['parent_element_id'] != idx:
                         parent_id = attr_info_ordered[idx]['parent_element_id']
                         parent_objects(attr_info_ordered[idx]['object'], attr_info_ordered[parent_id]['object']) 
+                
+                if idx == 0:
+                    if init_children:
+                        for init_child in init_children:
+                            parent_objects(init_child,attr_info_ordered[idx]['object'])
 
-
+                        
+        
 
             #Remove original object
             for col in obj.users_collection:
