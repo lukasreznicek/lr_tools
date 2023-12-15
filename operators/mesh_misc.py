@@ -254,17 +254,19 @@ class OBJECT_OT_lr_assign_checker(bpy.types.Operator):
 
 
         #Find script folder with addon
+        found = False
         for path in script_folder:
             path = os.path.join(path,'addons')
             if os.path.exists(path):
-                if 'lr_tools' in os.listdir(path):
+                if 'lr_tools' in os.listdir(path) or 'lr_tools-master' in os.listdir(path):
                     texture_full_path = os.path.join(path,'lr_tools','textures',texture_name)
-                elif 'lr_tools-master' in os.listdir(path):
-                    texture_full_path = os.path.join(path,'lr_tools-master','textures',texture_name)
-                else:
-                    message = 'Addon folder name in scripts directory should be: lr_tools. Please Rename.'
-                    self.report({'ERROR'}, message)
-                    return {'FINISHED'}
+                    found = True
+
+        if found == False:
+            message = 'Addon folder name in scripts directory should be: lr_tools. Please Rename.'
+            self.report({'ERROR'}, message)
+            return {'FINISHED'}
+        
         #Load image
         bpy.data.images.load(texture_full_path, check_existing=True)
         
