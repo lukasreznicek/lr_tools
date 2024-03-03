@@ -24,10 +24,22 @@ bl_info = {
 
 import bpy, os, bmesh, subprocess
 
-from .operators.attributes import OBJECT_OT_lr_add_attribute,OBJECT_OT_lr_attribute_increment_values_mesh,OBJECT_OT_lr_remove_attribute, OBJECT_OT_lr_attribute_select_by_index,OBJECT_OT_lr_attribute_select_by_name,OBJECT_OT_lr_set_obj_info_attr,OBJECT_OT_lr_recover_obj_info,OBJECT_OT_lr_attribute_increment_int_values
+from .operators.attributes import (OBJECT_OT_lr_add_attribute,
+                                   OBJECT_OT_lr_attribute_increment_values_mesh,
+                                   OBJECT_OT_lr_remove_attribute,OBJECT_OT_lr_obj_info_id_by_uv_island, 
+                                   OBJECT_OT_lr_attribute_select_by_index,
+                                   OBJECT_OT_lr_attribute_select_by_name,
+                                   OBJECT_OT_lr_set_obj_info_attr,
+                                   OBJECT_OT_lr_recover_obj_info,
+                                   OBJECT_OT_lr_attribute_increment_int_values)
+
 from .operators.unwrap_in_place import LR_Unwrap
-from .operators.set_vertex_color import OBJECT_OT_lr_assign_vertex_color,lr_offset_vertex_color,lr_pick_vertex_color
+
+from .operators.set_vertex_color import (OBJECT_OT_lr_assign_vertex_color,
+                                         lr_offset_vertex_color,
+                                         lr_pick_vertex_color)
 from .operators.set_vertex_alpha import lr_vertex_rgb_to_alpha
+
 from .operators.select import lr_select_obj_by_topology,lr_deselect_duplicate
 from .operators.replace_children import lr_replace_children
 from .operators.sculpt import lr_multires_sculpt_offset
@@ -43,6 +55,8 @@ from bpy.props import IntProperty, CollectionProperty, StringProperty,FloatVecto
 from bpy.types import Menu
 from bpy.types import Operator
 from bpy.app.handlers import persistent
+
+from .operators import modifiers
 
 from bl_ui.properties_object import ObjectButtonsPanel #For sub panels
 from bpy.utils import previews # for icons
@@ -168,6 +182,7 @@ class lr_tool_settings(bpy.types.PropertyGroup):
     vc_write_to_green: bpy.props.BoolProperty(name="Set G", description="False: Green channel won't be affected.", default=True)
     vc_write_to_blue: bpy.props.BoolProperty(name="Set B", description="False: Blue channel won't be affected.", default=True)
 
+    uv_copy_paste_destination: bpy.props.IntProperty(name="Destination Index", description="Paste UVs destination index", default=2, min = 1, soft_max = 7)
 
 class lr_tool_settings_object(bpy.types.PropertyGroup):
     lr_object_info_index: bpy.props.IntProperty(default=0)
@@ -478,6 +493,37 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
         # layout.operator("object.lr_exportformask", text="With one material and one specified UVSet", icon='EXPORT')
 
 
+
+
+
+
+class UI_PT_Panel_UV_Editor(Panel):
+    bl_label = 'UV'
+    bl_space_type = 'IMAGE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = "LR"
+    bl_options = {'DEFAULT_CLOSED'}
+
+
+    def draw(self, context):
+        lr_tools = bpy.context.scene.lr_tools
+
+        layout = self.layout.box()
+        layout.label(text='Object Info')
+        row = layout.row(align=True)
+        row.operator("lr_tools.uv_offset_by_object_id", text="Offset UVs")
+        
+
+        layout = self.layout.box()
+        layout.label(text='UV Edit')
+        row = layout.row(align=True)
+        ot = row.operator("lr_tools.uv_copy_paste", text="Copy selected")
+        ot.uv_index_destination = lr_tools.uv_copy_paste_destination
+        row.prop(lr_tools, 'uv_copy_paste_destination',text='To:',icon_only=False)
+        row.scale_y = 1.5
+
+
+
 class VIEW3D_PT_lr_obj_info(bpy.types.Panel):
     bl_idname = "OBJECT_PT_lr_object_info"
     bl_label = "OBJECT INFO"
@@ -579,19 +625,20 @@ class VIEW3D_PT_lr_obj_info(bpy.types.Panel):
             ope.store_mode='Y_AXIS' 
             ope.enable=False
 
-
         if context.mode == 'OBJECT':
             row = layout.row(align=True)
             
             row.operator('object.lr_recover_obj_info', text='Recover Info', icon = 'TRIA_DOWN_BAR')
             row.scale_y = 1.5
 
-            row = layout.row(align=True)
+            row = layout.column(align=True)
             row.operator('geometry.lr_set_per_obj_attribute', text='ID Per Object', icon = 'TRIA_DOWN_BAR')
-            row = layout.row(align=True)
+            # row = layout.row(align=True)
             row.operator('geometry.lr_set_per_mesh_island_attribute', text='ID Per Mesh Island', icon = 'TRIA_DOWN_BAR')
+            # row = layout.row(align=True)
+            row.operator('geometry.lr_obj_info_id_per_uv', text='ID Per UV Position', icon = 'TRIA_DOWN_BAR')
 
-        
+
 class VIEW3D_PT_lr_mesh(bpy.types.Panel):
     bl_idname = "OBJECT_PT_lr_mesh"
     bl_label = "MESH"
@@ -644,6 +691,26 @@ class VIEW3D_PT_lr_select_uv(bpy.types.Panel):
         row = layout.row(align=True)
         row.operator("object.lr_uv_index_name", text="Set UV Name: ", icon = 'PASTEDOWN')
         row.prop(lr_tools, "name_to_uv_index_set",icon_only=True)
+
+class VIEW3D_PT_lr_delete_modifier(bpy.types.Panel):
+    bl_label = "LR Edit"
+    bl_idname = "OBJECT_PT_lr_delete_modifier"
+    bl_parent_id = "DATA_PT_modifiers"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "object"
+    bl_category = "LR"
+    # bl_options = {'DEFAULT_CLOSED'}
+    # bl_options = {'DEFAULT_CLOSED'}
+    def draw(self, context):
+        layout = self.layout
+
+        row = layout.row()
+        row.operator("object.delete_modifier", text="Delete Modifier by Name")
+
+        # row = layout.row()
+        # row.prop(context.scene, "modifier_name")
+
 
 
 class VIEW3D_PT_lr_move_uv(bpy.types.Panel):
@@ -784,6 +851,7 @@ classes = (AddonPreferences,
             UCX.nameUCX,
             UCX.unhideUCX,
             UCX.hide_unhide_lattice,
+            
             uv_misc.OBJECT_OT_lr_uv_map_by_index_custom,
             uv_misc.OBJECT_OT_lr_uv_map_by_index,
             uv_misc.UVIndexName,
@@ -797,6 +865,9 @@ classes = (AddonPreferences,
             uv_misc.OBJECT_OT_remove_uv_by_index,
             uv_misc.lr_randomize_uv_offset,
             uv_misc.lr_grid_redistribute_uv_islands,
+            uv_misc.LR_Tools_OT_UVCopyPaste,
+            uv_misc.LR_TOOLS_OT_uv_offset_by_object_id,
+
             mesh_misc.OBJECT_OT_material_slot_remove_unused_on_selected,
             mesh_misc.MESH_OT_getEdgesLength,
             mesh_misc.OBJECT_OT_view_object_rotate,
@@ -820,10 +891,15 @@ classes = (AddonPreferences,
             VIEW3D_PT_lr_move_uv,
             VIEW3D_PT_lr_rename_uv,
             VIEW3D_PT_lr_add_remove_uv,
+            UI_PT_Panel_UV_Editor,
             
             VIEW3D_PT_lr_object,
             VIEW3D_PT_lr_obj_info,
             OBJECT_OT_lr_drop_object,
+
+            #UVs
+            
+
 
             #Attributes
             OBJECT_OT_lr_add_attribute, 
@@ -833,7 +909,13 @@ classes = (AddonPreferences,
             OBJECT_OT_lr_set_obj_info_attr,
             OBJECT_OT_lr_recover_obj_info,
             OBJECT_OT_lr_attribute_increment_int_values,
-            OBJECT_OT_lr_attribute_increment_values_mesh
+            OBJECT_OT_lr_attribute_increment_values_mesh,
+            OBJECT_OT_lr_obj_info_id_by_uv_island,
+
+            #Modifiers
+            VIEW3D_PT_lr_delete_modifier,
+            modifiers.OBJECT_OT_delete_modifier
+            
 
             )
 

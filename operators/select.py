@@ -17,7 +17,7 @@ class lr_select_obj_by_topology(bpy.types.Operator):
         description = 'Threshold for selecting identical objects',
         default = 0.01,
         min = 0, soft_max = 1
-    )
+    ) # type: ignore
 
 
     def execute(self, context):

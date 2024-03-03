@@ -18,9 +18,9 @@ class OBJECT_OT_lr_uv_map_by_index_custom(bpy.types.Operator):
 	def execute(self, context):
 
 		uv_index_custom = bpy.context.scene.lr_tools.select_uv_index
-		
-		
-	
+
+
+
 		for obj in bpy.context.selected_objects:
 			if obj.type == 'MESH':
 				
@@ -31,7 +31,6 @@ class OBJECT_OT_lr_uv_map_by_index_custom(bpy.types.Operator):
 				else:
 					self.report({'INFO'}, 'Skipping: '+obj.name+', has no uv map with index: '+str(uv_index_custom))
 		return {'FINISHED'}		
-
 
 
 class OBJECT_OT_lr_uv_map_by_index(bpy.types.Operator):
@@ -53,7 +52,6 @@ class OBJECT_OT_lr_uv_map_by_index(bpy.types.Operator):
 					self.report({'INFO'}, 'Skipping: '+obj.name+', has no uv map with index: '+str(self.uv_index))
 
 		return {'FINISHED'}		
-
 
 
 class UVIndexName(bpy.types.Operator):
@@ -90,7 +88,6 @@ class UVIndexName(bpy.types.Operator):
 
 
 		return {'FINISHED'}		
-
 
 
 class NewUVSet(bpy.types.Operator):
@@ -135,7 +132,6 @@ class NewUVSet(bpy.types.Operator):
 				 
 
 		return {'FINISHED'}		
-
 
 
 class RemoveActiveUVSet(bpy.types.Operator):
@@ -229,7 +225,6 @@ class RenameActiveUVSet(bpy.types.Operator):
 		return {'FINISHED'}			
 	
 
-
 class lr_replaceobjects(bpy.types.Operator):
 	"""Replaces inactive objects from active with parents"""
 	bl_idname = "object.lr_replace_objects"
@@ -306,7 +301,6 @@ class lr_replaceobjects(bpy.types.Operator):
 		return {'FINISHED'}			
 
 
-
 class move_uv_map_up(bpy.types.Operator):
 	'''Moves active UV Map one index up on selected objects'''
 	bl_idname = "object.mono_move_uv_map_up"
@@ -375,7 +369,6 @@ class move_uv_map_up(bpy.types.Operator):
 
 
 		return {'FINISHED'}	
-
 
 
 class move_uv_map_down(bpy.types.Operator):
@@ -447,7 +440,6 @@ class move_uv_map_down(bpy.types.Operator):
 		return {'FINISHED'}	
 
 
-
 class lr_remove_uv_by_name(bpy.types.Operator):
 	'''Removes UV Map by name on selected objects'''
 	bl_idname = "object.lr_remove_uv_by_name"
@@ -467,7 +459,6 @@ class lr_remove_uv_by_name(bpy.types.Operator):
 		
 		self.report({'INFO'}, 'Done')
 		return {'FINISHED'}	
-
 
 
 class lr_randomize_uv_offset(bpy.types.Operator):
@@ -503,7 +494,6 @@ class lr_randomize_uv_offset(bpy.types.Operator):
 					count +=1
 					
 		return {'FINISHED'}	
-
 
 
 class lr_grid_redistribute_uv_islands(bpy.types.Operator):
@@ -580,3 +570,72 @@ class lr_grid_redistribute_uv_islands(bpy.types.Operator):
 		bmesh.update_edit_mesh(obj.data)
 
 		return {'FINISHED'}	
+	
+
+
+
+class LR_Tools_OT_UVCopyPaste(bpy.types.Operator):
+	'''For copying UVs from one UVmap to another on the same object.\nSelect UVs to copy and run operator. UVMap will be added if missing.\n\nTo separate island and move, select vertices with Disabled 'Sticky Selection Mode' in UV window'''
+	bl_idname = "lr_tools.uv_copy_paste"
+	bl_label = "Copy selected UVs in active index to target index"
+	bl_options = {'REGISTER', 'UNDO'}
+
+	uv_index_destination: bpy.props.IntProperty(name='Target UV Channel', description='Starting from 1.', default=1, min=1, max=10, step=1)
+
+	def execute(self, context):
+		selected_objects = bpy.context.selected_objects
+		uv_index_destination = self.uv_index_destination-1
+		for obj in selected_objects:
+			if obj.type !='MESH':
+				continue
+
+			bm = bmesh.from_edit_mesh(obj.data)
+
+
+
+			# if  uv_index_destination > uv_layer_amount:
+			# 	return {'FINISHED'}
+			while uv_index_destination > len(bm.loops.layers.uv)-1:
+				bm.loops.layers.uv.new('UVMap')
+
+			uv_layer_source = bm.loops.layers.uv.active
+			uv_layer_destination = bm.loops.layers.uv[uv_index_destination]
+
+			# Get selected UV loops and transfer UV coordinates
+			for vert in bm.verts:
+				for loop in vert.link_loops:
+					if loop[uv_layer_source].select:
+						loop[uv_layer_destination].uv = loop[uv_layer_source].uv
+
+			bmesh.update_edit_mesh(obj.data)
+		return {'FINISHED'}
+		
+
+class LR_TOOLS_OT_uv_offset_by_object_id(bpy.types.Operator):
+	'''Select multiple objects and run the operator. UVs for each object will be moved into unique V index'''
+	
+	bl_idname = "lr_tools.uv_offset_by_object_id"
+	bl_label = "Offsets objects UVs in V axis. Each object will have its loops in its own UV space."
+	bl_options = {'REGISTER', 'UNDO'}
+    
+	@classmethod
+	def poll(cls, context):
+		# Check if the operator can run in the current context
+		return context.mode == 'OBJECT'    
+
+	def execute(self, context):
+
+		for id,obj in enumerate(bpy.context.selected_objects):
+			move_UVs(obj,0,id)
+
+		return {'FINISHED'}
+
+	
+def move_UVs(obj, u_offset, v_offset):
+
+    if obj.type ==  'MESH': 
+        uv_layer = obj.data.uv_layers.active.data
+        for loop in obj.data.loops:
+            uv_coords = uv_layer[loop.index].uv
+            uv_coords[0] += u_offset
+            uv_coords[1] += v_offset

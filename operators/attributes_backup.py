@@ -2,7 +2,6 @@ import bpy,bmesh
 from ..utils import lr_functions
 from collections import OrderedDict
 from mathutils import Matrix,Vector
-import mathutils
 
 class OBJECT_OT_lr_add_attribute(bpy.types.Operator):
     '''Adds a new attribute to all selected objects'''
@@ -15,7 +14,7 @@ class OBJECT_OT_lr_add_attribute(bpy.types.Operator):
         name="Name",
         description="Enter a string",
         default="Attribute",
-    )# type: ignore
+    )
 
     domain: bpy.props.EnumProperty(
         name="Domain",
@@ -27,7 +26,7 @@ class OBJECT_OT_lr_add_attribute(bpy.types.Operator):
             ('CORNER', "Face Corner", "Add attribute to face corner"),
         ],
         default='POINT',
-    )# type: ignore
+    )
 
     data_type: bpy.props.EnumProperty(
         name="Data Type",
@@ -46,7 +45,7 @@ class OBJECT_OT_lr_add_attribute(bpy.types.Operator):
             ('QUATERNION', "Quaternion", "Quaternion data type"),
         ],
         default='FLOAT',
-    ) # type: ignore
+    )
 
     @classmethod
     def poll(cls, context): 
@@ -83,7 +82,7 @@ class OBJECT_OT_lr_remove_attribute(bpy.types.Operator):
         name="Name",
         description="Enter a string",
         default="Attribute",
-    )# type: ignore
+    )
 
 
     @classmethod
@@ -125,7 +124,7 @@ class OBJECT_OT_lr_attribute_select_by_index(bpy.types.Operator):
         default=1,
         min=0,
         soft_max=10
-    )# type: ignore
+    )
 
     @classmethod
     def poll(cls, context): 
@@ -157,7 +156,7 @@ class OBJECT_OT_lr_attribute_select_by_name(bpy.types.Operator):
         name="Index: ",
         description="Enter index to select",
         default='Attribute',
-    )# type: ignore
+    )
 
     @classmethod
     def poll(cls, context): 
@@ -209,7 +208,7 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
         name="Attr Name ",
         description="Enter index to select",
         default='ObjInfo',
-    )# type: ignore
+    )
 
     store_mode: bpy.props.EnumProperty(
         items=[
@@ -220,14 +219,14 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
         ],
         default='ORIGIN',
         description="Choose store mode"
-    )# type: ignore
-    enable: bpy.props.BoolProperty(default=True, name = 'Enable', description=' True: assign value. \nFalse: Remove')# type: ignore
+    )
+    enable: bpy.props.BoolProperty(default=True, name = 'Enable', description=' True: assign value. \nFalse: Remove')
     
     @classmethod
     def poll(cls, context): 
         return context.mode == 'OBJECT' or context.mode == 'EDIT_MESH'
         
-    skip_invoke: bpy.props.BoolProperty(default=False, options={'HIDDEN'})    # type: ignore
+    skip_invoke: bpy.props.BoolProperty(default=False, options={'HIDDEN'})    
     
     def invoke(self, context, event):
         if self.skip_invoke == True:
@@ -303,11 +302,11 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
                 obj_attr = obj.data.attributes.get(self.attr_name)
 
                 if obj_attr != None:
-                    if obj_attr.domain != 'CORNER' or obj_attr.data_type != 'FLOAT_VECTOR': #If attribute with this name is present. Rename if incorrect and make new one.
+                    if obj_attr.domain != 'POINT' or obj_attr.data_type != 'FLOAT_VECTOR': #If attribute with this name is present. Rename if incorrect and make new one.
                         obj_attr.name = self.attr_name+'_Del'
-                        obj.data.attributes.new(self.attr_name,type='FLOAT_VECTOR', domain='CORNER')
+                        obj.data.attributes.new(self.attr_name,type='FLOAT_VECTOR', domain='POINT')
                 else:
-                    obj.data.attributes.new(self.attr_name,type='FLOAT_VECTOR', domain='CORNER')
+                    obj.data.attributes.new(self.attr_name,type='FLOAT_VECTOR', domain='POINT')
 
 
                 if bpy.context.mode == 'OBJECT':
@@ -317,77 +316,38 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
                     bm = bmesh.from_edit_mesh(obj.data)
 
                 # #Create if not present 
-                bm_layer = bm.loops.layers.float_vector[self.attr_name]
+                bm_layer = bm.verts.layers.float_vector[self.attr_name]
                 # print(f"{bm_layer= }")
                 # if bm_layer == None:
                 #     bm_layer = bm.verts.layers.float.new(self.attr_name)
                 # print(f"{bm_layer= }")
 
-                select_mode = bm.select_mode   # 'VERT','EDGE','FACE'
+                for vert in bm.verts:
+                    if vert.select == True:
+                        
+                        if self.store_mode == 'ORIGIN':
+                            if self.enable == True:
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 3, 2)
+                            else:
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 3, 1)
+                        
+                        elif self.store_mode == 'X_AXIS':
+                            if self.enable == True:
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 2, 2)
+                            else:
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 2, 1)
 
-                if select_mode == {'VERT'} or select_mode == {'VERT', 'FACE'}:
+                        elif self.store_mode == 'Y_AXIS':
+                            if self.enable == True:
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 1, 2)
+                            else:
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 1, 1)
 
-                    for vert in bm.verts:
-
-                        if vert.select == True:
-                            for loop in vert.link_loops:
-
-                                if self.store_mode == 'ORIGIN':
-                                    if self.enable == True:
-                                        # print(f'{loop[bm_layer][1]= }')
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 3, 2)
-                                    else:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 3, 1)
-                                
-                                elif self.store_mode == 'X_AXIS':
-                                    if self.enable == True:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 2, 2)
-                                    else:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 2, 1)
-
-                                elif self.store_mode == 'Y_AXIS':
-                                    if self.enable == True:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 1, 2)
-                                    else:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 1, 1)
-
-                                elif self.store_mode == 'Z_AXIS':
-                                    if self.enable == True:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 0, 2)
-                                    else:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 0, 1)
-
-
-                if select_mode == {'FACE'}:
-                    for face in bm.faces:
-
-                        if face.select == True:
-                            for loop in face.loops:
-
-                                if self.store_mode == 'ORIGIN':
-                                    if self.enable == True:
-                                        # print(f'{loop[bm_layer][1]= }')
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 3, 2)
-                                    else:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 3, 1)
-
-                                elif self.store_mode == 'X_AXIS':
-                                    if self.enable == True:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 2, 2)
-                                    else:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 2, 1)
-
-                                elif self.store_mode == 'Y_AXIS':
-                                    if self.enable == True:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 1, 2)
-                                    else:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 1, 1)
-
-                                elif self.store_mode == 'Z_AXIS':
-                                    if self.enable == True:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 0, 2)
-                                    else:
-                                        loop[bm_layer][1] = change_digit(loop[bm_layer][1], 0, 1)
+                        elif self.store_mode == 'Z_AXIS':
+                            if self.enable == True:
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 0, 2)
+                            else:
+                                vert[bm_layer][1] = change_digit(vert[bm_layer][1], 0, 1)
 
 
                         # elif self.store_mode == 'ELEMENT_INDEX':
@@ -453,104 +413,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
         
     def execute(self, context): 
         
-
-        @staticmethod
-        def directional_vector_from_loop_indices(
-            obj: bpy.types.Object,
-            loop_indices: list,
-            local_origin: Vector = None
-        ) -> mathutils.Vector:
-            """
-            Takes in local origin
-            Calculate a directional vector based on the specified loop indices of a 3D object in Blender.
-
-            Parameters:
-            - obj: bpy.types.Object
-            The Blender object for which the directional vector is calculated.
-            
-            - loop_indices: list
-            A list of loop indices associated with the object, representing the points used to determine the directional vector.
-            
-            - local_origin: Vector, optional
-            The local origin vector used as a reference point for calculating the directional vector.
-            Default is the origin (0, 0, 0).
-
-            Returns:
-            - Vector or None
-            The calculated directional vector based on the specified loop indices. Returns None if no valid directional vector could be determined.
-            """
-            if local_origin == None:
-                local_origin = Vector((0, 0, 0))
-
-            axis_indices_len = len(loop_indices)
-
-            if axis_indices_len == 1:
-                axis_vector_local = obj.data.vertices[obj.data.loops[loop_indices[0]].vertex_index].co
-                directional_vector = (obj.matrix_world @ axis_vector_local) - (obj.matrix_world @ local_origin)
-                
-            elif axis_indices_len > 1:
-                vertices_from_loops = list(set([obj.data.loops[loop_idx].vertex_index for loop_idx in loop_indices]))
-                axis_vectors_local = [obj.data.vertices[vert_idx].co for vert_idx in vertices_from_loops]
-                axis_vectors_local_avg = sum(axis_vectors_local, Vector()) / len(axis_vectors_local) #Averaged version
-                directional_vector = (obj.matrix_world @ axis_vectors_local_avg) - (obj.matrix_world @ local_origin)
-                
-            else:
-                directional_vector = None
-
-            return directional_vector
-
-
-
-        @staticmethod
-        def position_from_loop_indices(obj,
-                                       loop_indicies:list):
-                                       
-            """
-            Calculate the local and global average positions, and the average normal vector from the specified loop indices.
-
-            Parameters:
-            - obj: bpy.types.Object
-            The Blender object for which the positions and normal vector are calculated.
-
-            - loop_indices: list
-            A list of loop indices associated with the object, representing the points used to determine the positions and normal vector.
-
-            Returns:
-            - Tuple of (Vector, Vector, Vector) or (None, None, None)
-            - position_global_avg: The global average position.
-            - position_local_avg: The local average position.
-            - normal_vector_local: The average normal vector.
-            Returns (None, None, None) if no valid origin positions are determined.
-            """
-
-            origin_idx_len = len(loop_indicies)
-
-            if origin_idx_len == 1: # No need to average vectors if only one vert index.
-                position_local_avg = obj.data.vertices[obj.data.loops[loop_indicies[0]].vertex_index].co
-                position_global_avg =  obj.matrix_world @ position_local_avg
-
-                normal_vector_local = obj.data.vertices[obj.data.loops[loop_indicies[0]].vertex_index].normal
-
-            elif origin_idx_len > 1: # Averaged origin vectors
-
-                vertices_from_loops = list(set([obj.data.loops[loop_idx].vertex_index for loop_idx in loop_indicies]))
-                origin_positions_local = [obj.data.vertices[vert_idx].co for vert_idx in vertices_from_loops]
-                position_local_avg = average_vectors(origin_positions_local)
-                position_global_avg =  obj.matrix_world @ position_local_avg
-
-                normal_vector_local = average_vectors([obj.data.vertices[vert_idx].normal for vert_idx in vertices_from_loops])
-                
-            else:
-                position_global_avg = None
-                position_local_avg = None
-                normal_vector_local = None
-                message = f"Missing Origin Attribute on {obj.name}"
-                self.report({'INFO'}, message)
-
-            return (position_global_avg, position_local_avg, normal_vector_local)
-
-
-
         @staticmethod
         def change_digit(original_number, position_from_right, new_value):
             # Extract the digits from the original number
@@ -820,8 +682,15 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
 
         for obj in objs:
+            # obj.data = obj.data.copy() #Make object unique. Remove instancing.
+            # # print(f'{obj.data.users = }')
+            # act_obj = bpy.context.active_object
+            # bpy.context.view_layer.objects.active = obj
+            # for modifier in obj.modifiers: # Apply all modifier
+            #     bpy.ops.object.modifier_apply(modifier=modifier.name)
+            # bpy.context.view_layer.objects.active = act_obj
 
-            obj_evaluated = obj.evaluated_get(depsgraph)  #modifiers need to be applied before taking any info from them such as coordinates. .co does not include modifiers.
+            obj_evaluated = obj.evaluated_get(depsgraph)  #modifiers need to be applied before taking eny info from them such as coordinates. .co does not include modifiers.
 
             if obj.parent:
                 init_parent = obj.parent
@@ -842,7 +711,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 
                 if int(data.vector[1]) == 0 or int(data.vector[1] <= 999): #Check attribute format. If attribute value is 0 set it to default 1111
                     data.vector[1] = 1111.0
-
 
 
                 # ------------ Create dictionary where vertex index is picked based on its attribute value. ------------
@@ -893,43 +761,104 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             attr_info_ordered = OrderedDict(sorted(attr_info.items(), key=lambda x: x[0]))
 
 
-            # print(f'{attr_info_ordered= }')
+
             for idx in attr_info_ordered: #idx is int, idx is one mesh element. 
 
 
                 # ------------------ GET ORIGIN LOCAL AND GLOBAL POSITION FROM VERTEX INDEXES + AVERAGED VERSION ------------------
-                origin_position_global_avg, origin_position_local_avg, normal_vector_local = position_from_loop_indices(obj_evaluated,attr_info_ordered[idx]['pivot_index'])
+
+                origin_idx_len = len(attr_info_ordered[idx]['pivot_index'])
+
+                if origin_idx_len == 1: # No need to average vectors if only one vert index.
+                    origin_vector_local_avg = obj_evaluated.data.vertices[attr_info_ordered[idx]['pivot_index'][0]].co
+                    origin_vector_global_avg =  get_global_vector_position(obj_evaluated,origin_vector_local_avg)
+
+                elif origin_idx_len > 1: # Averaged origin vectors
+                    origin_vectors_local = [obj_evaluated.data.vertices[vert_idx].co for vert_idx in attr_info_ordered[idx]['pivot_index']]
+                    origin_vector_local_avg = average_vectors(origin_vectors_local)
+                    origin_vector_global_avg =  get_global_vector_position(obj_evaluated,origin_vector_local_avg)
+
+                else:
+                    origin_vector_global_avg = None
+                    origin_vector_local_avg = Vector((0,0,0))
+                    self.report({'INFO'}, "Missing Origin Attribute.")
 
 
 
 
                 # ------------------ ORIGIN ROTATION GET ------------------
+
+                # if attr_info_ordered[idx]['x_axis_index']:
                 # ------ Get Directional Vector X from  vertex positions + averaged version ------
-                directional_vector_x = directional_vector_from_loop_indices(obj_evaluated,attr_info_ordered[idx]['x_axis_index'],origin_position_local_avg)
+
+                x_axis_idx_len = len(attr_info_ordered[idx]['x_axis_index'])
+                if x_axis_idx_len == 1: # No need to average vectors if only one vert index.
+                    x_axis_vector_local = obj_evaluated.data.vertices[attr_info_ordered[idx]['x_axis_index'][0]].co
+
+                    directional_vector_x = (obj_evaluated.matrix_world @ x_axis_vector_local) - (obj_evaluated.matrix_world @ origin_vector_local_avg) #Local to World and - for directionality
+                
+                elif x_axis_idx_len > 1: #Averaged vectors in case of multiple vertex idx.
+                    x_axis_vectors_local = [obj_evaluated.data.vertices[vert_idx].co for vert_idx in attr_info_ordered[idx]['x_axis_index']]
+                    x_axis_vector_local_avg = average_vectors(x_axis_vectors_local)
+
+                    directional_vector_x = (obj_evaluated.matrix_world @ x_axis_vector_local_avg) - (obj_evaluated.matrix_world @ origin_vector_local_avg)
+                
+                else:
+                    directional_vector_x = None
+                    # self.report({'INFO'}, "Missing X Axis Attribute")
+                    # continue
 
 
-                # ------ Get Directional Vector Y  ------
-                directional_vector_y = directional_vector_from_loop_indices(obj_evaluated,attr_info_ordered[idx]['y_axis_index'],origin_position_local_avg)
+                # ------  Get Directional Vector Y  ------
+                y_axis_idx_len = len(attr_info_ordered[idx]['y_axis_index'])
+                if y_axis_idx_len == 1: 
+                    y_axis_vector_local = obj_evaluated.data.vertices[attr_info_ordered[idx]['y_axis_index'][0]].co
 
+                    directional_vector_y = (obj_evaluated.matrix_world @ y_axis_vector_local) - (obj_evaluated.matrix_world @ origin_vector_local_avg) 
 
-                # ------ Get Directional Vector Z  ------
-                directional_vector_z = directional_vector_from_loop_indices(obj_evaluated,attr_info_ordered[idx]['z_axis_index'],origin_position_local_avg)
+                elif y_axis_idx_len > 1: #Averaged version
+                    y_axis_vectors_local = [obj_evaluated.data.vertices[vert_idx].co for vert_idx in attr_info_ordered[idx]['y_axis_index']]
+                    y_axis_vector_local_avg = average_vectors(y_axis_vectors_local)
 
-                if directional_vector_z == None and len(attr_info_ordered[idx]['pivot_index']) > 0: #If Z isnt provided origin normal is used.
-                    directional_vector_z = normal_vector_local @ obj_evaluated.matrix_world.inverted()
+                    directional_vector_y = (obj_evaluated.matrix_world @ y_axis_vector_local_avg) - (obj_evaluated.matrix_world @ origin_vector_local_avg)
+                else:
+                    directional_vector_y = None
+                    # continue
+
+                #Get Directional Vector Z from normal of origin vertex
+                if attr_info_ordered[idx]['pivot_index'] != []:
+                    directional_vector_z = obj_evaluated.data.vertices[attr_info_ordered[idx]['pivot_index'][0]].normal @ obj_evaluated.matrix_world.inverted()
                     directional_vector_z = directional_vector_z.normalized()
-                else: 
+                elif origin_idx_len == 0:
+                    message = f'Missing origin attribute on {obj.name} creating cross product from X and Y'
+                    self.report({'INFO'}, message) 
+                    directional_vector_z = directional_vector_x.cross(directional_vector_y)
+                    directional_vector_z.normalize()
+                else:
                     directional_vector_z = None
+                    self.report({'INFO'}, "Missing pivot position.")
+
+                print(f'{directional_vector_z= }')
+                print(f'{attr_info_ordered= }')
+                print(f'{x_axis_idx_len= }')
+                print(f'{y_axis_idx_len= }')
+                print(f'{origin_idx_len= }')
+                
+
+                # #Report missing 
+                # if x_axis_idx_len == 0 or y_axis_idx_len == 0 or origin_idx_len == 0:
+                #     message = 'Missing: '
+                #     if x_axis_idx_len == 0:
+                #         message += 'X Axis, '
+                #     if y_axis_idx_len == 0:
+                #         message += 'Y Axis, '
+                #     if origin_idx_len == 0:
+                #         message += 'Origin, Z Axis, '
+                #     message += f'From: {obj.name}'
+                #     self.report({'INFO'}, message)
 
 
 
-                # elif origin_idx_len == 0:
-                #     message = f'Missing origin attribute on {obj.name} creating cross product from X and Y'
-                #     self.report({'INFO'}, message) 
-                #     directional_vector_z = directional_vector_x.cross(directional_vector_y)
-                #     directional_vector_z.normalize()
-
- 
                 # self.report({'INFO'}, "Missing Y Axis Attribute")
                 if directional_vector_x and directional_vector_y and directional_vector_z:
                     orthagonal_xyz_axis =gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
@@ -964,20 +893,19 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                                                      same_transform=True)
 
                 # ------ REMOVE ALL BUT NEEDED INDEXES ------
-                loops_to_verts = list(set([element.data.vertices[element.data.loops[loop].vertex_index].index for loop in attr_info_ordered[idx]['index']]))
+                lr_functions.delete_verts(element,attr_info_ordered[idx]['index'],invert=True)
 
-                lr_functions.delete_verts(element,loops_to_verts,invert=True)
 
                 attr_info_ordered[idx]['object'] = element #Assign detached object to dictionary
 
 
                 # ------------ SET ORIGIN POSITION ------------
-                if origin_position_global_avg:
+                if origin_vector_global_avg:
                     
                     move_origin_to_coord(element,
-                                         origin_position_global_avg[0],
-                                         origin_position_global_avg[1],
-                                         origin_position_global_avg[2])
+                                         origin_vector_global_avg[0],
+                                         origin_vector_global_avg[1],
+                                         origin_vector_global_avg[2])
 
                 # ------------ SET ORIGIN ROTATION ------------
 
@@ -1006,6 +934,8 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                         if init_children:
                             for init_child in init_children:
                                 parent_objects(init_child,attr_info_ordered[idx]['object'])
+
+                     
 
             #Remove original object
             for col in obj.users_collection:
@@ -1122,20 +1052,44 @@ class OBJECT_OT_lr_obj_info_id_by_uv_island(bpy.types.Operator):
             attr_target = obj.data.attributes.get(self.target_attr_name)  
 
             if attr_target == None:
-                attr_target = obj.data.attributes.new(self.target_attr_name,'FLOAT_VECTOR', 'CORNER')
-            
-            elif attr_target.data_type != 'FLOAT_VECTOR' or attr_target.domain != 'CORNER':
-                attr_target.name = self.target_attr_name+'_Backup'
-                attr_target = obj.data.attributes.new(self.target_attr_name,'FLOAT_VECTOR', 'CORNER')
-
+                self.report({'INFO'}, f'Missing attribute: {self.source_uv_attr_name} on: {obj.name} object.')
+                continue
 
             uv_layer = obj.data.uv_layers.get(self.source_uv_attr_name)
+
             if uv_layer == None:
                 self.report({'INFO'}, f'Missing attribute: {self.source_uv_attr_name} on: {obj.name} object.')
                 continue          
 
+            vert_loops = {}
             for loop in obj.data.loops:
-                attr_target.data[loop.index].vector[0] = int(uv_layer.data[loop.index].uv[1])
+                uv_coords = uv_layer.data[loop.index]
+
+                vert_loops.setdefault(loop.vertex_index,{})
+                vert_loops[loop.vertex_index].setdefault('loops',[])
+                vert_loops[loop.vertex_index].setdefault('uvs',[])
+
+                vert_loops[loop.vertex_index]['uvs'].append(uv_layer.data[loop.index].uv)
+                vert_loops[loop.vertex_index]['loops'].append(loop.index)
+            # print(vert_loops[8])
+
+
+            for vert in vert_loops:
+                base = Vector((0,0))
+                # print(f'{base= }')
+                for uv_pos in vert_loops[vert]['uvs']:
+                    # print(f'{uv_pos= }')
+                    base += uv_pos
+
+                average = base/len(vert_loops[vert]['uvs'])
+                # print(f'{average[1]= }')
+
+                # print(f'{attr_target.data[vert].vector[0]= }')
+
+                attr_target.data[vert].vector[0] = int(average[1])
+
+            # for attribute in attr.data:
+            #     attribute.vector[0] = index
 
         return {'FINISHED'}
 
@@ -1171,31 +1125,34 @@ class OBJECT_OT_lr_attribute_increment_values_mesh(bpy.types.Operator):
             obj_index = objects_eval.get('index')
             if obj_index is None:
                 objects_eval[index] = {}
-                objects_eval[index]['elements_vert_indexes'] = None
+                objects_eval[index]['elements_poly_indexes'] = None
                 objects_eval[index]['object'] = None
 
-            objects_eval[index]['elements_vert_indexes'] = lr_functions.get_vertex_islands(obj)
+            objects_eval[index]['elements_poly_indexes'] = lr_functions.get_vertex_islands(obj)
             objects_eval[index]['object'] = obj
 
+        # bm = bmesh.new()
+        # bm.from_mesh(obj.data)
 
         element_id = 0
         for obj_index in objects_eval:
             bm = bmesh.new()
             bm.from_mesh(objects_eval[obj_index]['object'].data)
-            bm_layer = bm.loops.layers.float_vector.get(self.attr_name)
+            bm_layer = bm.verts.layers.float_vector.get(self.attr_name)
             if bm_layer == None:
-                bm_layer = bm.loops.layers.float_vector.new(self.attr_name)
-
-
-            for element in objects_eval[obj_index]['elements_vert_indexes']:
+                bm_layer = bm.verts.layers.float_vector.new(self.attr_name)
+            
+            for element in objects_eval[obj_index]['elements_poly_indexes']:
                 for vert_id in element:
                     bm.verts.ensure_lookup_table()
-                    for loop in bm.verts[vert_id].link_loops:
-                        loop[bm_layer][0] = element_id
+                    bm.verts[vert_id][bm_layer][0] = element_id
                 element_id +=1
 
             bm.to_mesh(objects_eval[obj_index]['object'].data)
-            bm.free()     
+            bm.free()      
 
+        # for index,obj in enumerate(selected_objects):
+        #     for attribute in obj.data.attributes.active.data:
+        #         attribute.vector[0] = index
 
         return {'FINISHED'}

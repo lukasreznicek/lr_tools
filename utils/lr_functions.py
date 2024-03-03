@@ -541,6 +541,7 @@ def get_vertex_islands(obj):
     return vertex_islands
 
 
+
 def set_attribute(obj,name, domain,data_type, new_value, data_type_position = None):
     '''
     domain: POINT,EDGE,FACE,CORNER
