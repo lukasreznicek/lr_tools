@@ -72,6 +72,8 @@ class OBJECT_OT_lr_add_attribute(bpy.types.Operator):
         return {'FINISHED'}		
 
 
+
+
 class OBJECT_OT_lr_remove_attribute(bpy.types.Operator):
     '''Removes an attribute from all selected objects'''
     bl_idname = "geometry.lr_remove_attribute"
@@ -107,6 +109,7 @@ class OBJECT_OT_lr_remove_attribute(bpy.types.Operator):
 
 
         return {'FINISHED'}		
+
 
 
 
@@ -146,6 +149,8 @@ class OBJECT_OT_lr_attribute_select_by_index(bpy.types.Operator):
         return {'FINISHED'}		
     
 
+
+
 class OBJECT_OT_lr_attribute_select_by_name(bpy.types.Operator):
     '''
     '''
@@ -177,12 +182,9 @@ class OBJECT_OT_lr_attribute_select_by_name(bpy.types.Operator):
 
 
         return {'FINISHED'}		
-
-
-
-# def store_selected_value_into_attr(obj,attr_name, data_type, domain, store_mode):
-
     
+
+
 
 class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
     
@@ -216,6 +218,7 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
             ('ORIGIN', 'Pivot', 'Use Pivot'),
             ('X_AXIS', 'X Axis', 'Use X Axis'),
             ('Y_AXIS', 'Y Axis', 'Use Y Axis'),
+            ('Z_AXIS', 'Y Axis', 'Use Z Axis'),
             ('ELEMENT_INDEX', 'Element Index', 'Use Element Index')
         ],
         default='ORIGIN',
@@ -242,6 +245,7 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
 
         @staticmethod
         def change_digit(original_number, position_from_right, new_value):
+            # Starting from 0
             # Extract the digits from the original number
             
             if original_number <= 999:
@@ -328,7 +332,6 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
                 if select_mode == {'VERT'} or select_mode == {'VERT', 'FACE'}:
 
                     for vert in bm.verts:
-
                         if vert.select == True:
                             for loop in vert.link_loops:
 
@@ -390,11 +393,6 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
                                         loop[bm_layer][1] = change_digit(loop[bm_layer][1], 0, 1)
 
 
-                        # elif self.store_mode == 'ELEMENT_INDEX':
-                        #     pass
-                        #     # vert[bm_layer] = obj_index + round(vert[bm_layer] - int(vert[bm_layer]),6)
-                        #     vert[bm_layer][0] = change_digit(vert[bm_layer], 0, 1)
-
 
                 if bpy.context.mode == 'OBJECT':
                     bm.to_mesh(obj.data)
@@ -413,9 +411,8 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
     Vector3
 
     X = Object Index
-    Y = X Vector
-    Z = Y Vector
-    W = Parent ID
+    Y = (1111.0 = Off, 2222.0 = On) Object pivot, X axis, Y axis, Z axis
+    Z = Parent ID
     
     '''
 
@@ -427,20 +424,20 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
         name="Remove Extra",
         description="Remove vertices for pivot position. X axis and Y Axis",
         default=False,
-    )
-
-    src_attr_name: bpy.props.StringProperty(
-        name="Source Attribute",
-        description="Attribute with stored obj info data",
-        default='ObjInfo',
-    )
-
+    ) # type: ignore
 
     fix_left_handed_axis: bpy.props.BoolProperty(
         name = "Fix Axis",
         description = "If resulting axis is left handed, invert Y axis making it right handed. This will prevent negative scaling or flipped normals.",
         default = True,
-    )
+    ) # type: ignore
+
+    src_attr_name: bpy.props.StringProperty(
+        name="Source Attribute",
+        description="Attribute with stored obj info data",
+        default='ObjInfo',
+    ) # type: ignore
+
 
     # @classmethod
     # def poll(cls, context): 
@@ -458,8 +455,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
         def directional_vector_from_loop_indices(
             obj: bpy.types.Object,
             loop_indices: list,
-            local_origin: Vector = None
-        ) -> mathutils.Vector:
+            local_origin: Vector = None) -> mathutils.Vector:
             """
             Takes in local origin
             Calculate a directional vector based on the specified loop indices of a 3D object in Blender.
@@ -498,7 +494,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 directional_vector = None
 
             return directional_vector
-
 
 
         @staticmethod
@@ -550,7 +545,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             return (position_global_avg, position_local_avg, normal_vector_local)
 
 
-
         @staticmethod
         def change_digit(original_number, position_from_right, new_value):
             # Extract the digits from the original number
@@ -566,7 +560,8 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             new_number = int(''.join(map(str, digits)))
 
             return new_number
-        
+
+
         @staticmethod
         def parent_objects(child_obj, parent_obj):
             # Store the child object's world matrix
@@ -576,6 +571,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             child_obj.parent = parent_obj
             child_obj.matrix_world = child_world_matrix  # Restore the world matrix
 
+
         @staticmethod
         def vec_to_rotational_matrix(v1,v2,v3):
             """
@@ -584,6 +580,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             """
             # Create the rotational matrix
             return Matrix((v1, v2, v3)).transposed() #Flip rows into columns. So v1 is in first column instead of a first row.
+
 
         @staticmethod
         def gram_schmidt_orthogonalization(v1, v2, v3):
@@ -608,13 +605,15 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             orthogonal_vector_basis = (u1, u2, u3)
             return orthogonal_vector_basis
 
+
         @staticmethod
         def calculate_z_vector(v1, v2):
             # Calculate the cross product of v1 and v2
             z_vector = v1.cross(v2)
             z_vector.normalize()
             return z_vector
-        
+
+
         @staticmethod
         def is_right_handed(v1, v2, v3):
             # Cross product of v1 and v2
@@ -630,6 +629,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 return False
             else:
                 return None
+
 
         @staticmethod
         def set_origin_rotation(obj, rotation_matrix_to):
@@ -653,6 +653,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             
             #Mesh rotation
             obj.data.transform(Rloc.inverted())
+
 
         @staticmethod
         def local_to_global_directional_vector(obj, local_vector):
@@ -679,6 +680,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
             return global_vector
 
+
         @staticmethod
         def matrix_decompose(matrix_world):
             ''' 
@@ -695,6 +697,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 active_obj_mat_sca[i][i] = scale[i]
 
             return active_obj_mat_loc, active_obj_mat_rot, active_obj_mat_sca
+
 
         @staticmethod
         def move_origin_to_coord(obj,x,y,z):
@@ -726,7 +729,8 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
             if is_object == False:
                 bpy.context.object.mode = store_mode
-        
+
+
         @staticmethod
         def get_global_vector_position(obj, vector):
             """
@@ -744,7 +748,8 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 return None
             
             return obj.matrix_world @ vector
-        
+
+
         @staticmethod
         def average_vectors(list_of_vectors:list): 
 
@@ -754,6 +759,7 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 local_vertex_co += vector
 
             return local_vertex_co / len(list_of_vectors)
+
 
         @staticmethod
         def element_separate(obj,element_indexes,parent = None, origin_coords = None):
@@ -814,6 +820,8 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             
             return obj_separated
 
+
+
         objs = bpy.context.selected_objects
         
         depsgraph = bpy.context.evaluated_depsgraph_get()
@@ -860,7 +868,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 i_val_z = int(data.vector[2])                       #Parent Mesh ID
 
 
-
                 if attr_val_x not in attr_info: #Create new if mesh ID not present already
                     attr_info[attr_val_x] = {
                         'index': [],
@@ -901,8 +908,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 origin_position_global_avg, origin_position_local_avg, normal_vector_local = position_from_loop_indices(obj_evaluated,attr_info_ordered[idx]['pivot_index'])
 
 
-
-
                 # ------------------ ORIGIN ROTATION GET ------------------
                 # ------ Get Directional Vector X from  vertex positions + averaged version ------
                 directional_vector_x = directional_vector_from_loop_indices(obj_evaluated,attr_info_ordered[idx]['x_axis_index'],origin_position_local_avg)
@@ -915,35 +920,61 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 # ------ Get Directional Vector Z  ------
                 directional_vector_z = directional_vector_from_loop_indices(obj_evaluated,attr_info_ordered[idx]['z_axis_index'],origin_position_local_avg)
 
-                if directional_vector_z == None and len(attr_info_ordered[idx]['pivot_index']) > 0: #If Z isnt provided origin normal is used.
-                    directional_vector_z = normal_vector_local @ obj_evaluated.matrix_world.inverted()
-                    directional_vector_z = directional_vector_z.normalized()
-                else: 
-                    directional_vector_z = None
 
 
 
-                # elif origin_idx_len == 0:
-                #     message = f'Missing origin attribute on {obj.name} creating cross product from X and Y'
-                #     self.report({'INFO'}, message) 
-                #     directional_vector_z = directional_vector_x.cross(directional_vector_y)
-                #     directional_vector_z.normalize()
-
- 
-                # self.report({'INFO'}, "Missing Y Axis Attribute")
+                #Get rotational matrix from directional vectors
+                
+                #If All X, Y, Z provided,
                 if directional_vector_x and directional_vector_y and directional_vector_z:
                     orthagonal_xyz_axis =gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
-
     
-                    if self.fix_left_handed_axis:
-                        right = is_right_handed(orthagonal_xyz_axis[0], orthagonal_xyz_axis[1], orthagonal_xyz_axis[2]) #Check if is right hand coord system
-                        if right == False:
-                            orthagonal_xyz_axis[1].negate() #Currently flipping Y axis but could be any axis
-
                     #Rotational matrix from orthagonal axis vectors
                     rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
+                    print("All is provided")
+
+
+                #If only Z and Y provided (Take X from cross product)
+                elif directional_vector_y and directional_vector_z and not directional_vector_x:
+
+                    directional_vector_x = directional_vector_y.cross(directional_vector_z) #Result is right handed coord system
+
+                    orthagonal_xyz_axis = gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
+                    rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
+                    print("Calculating X")
+
+                #If only Y and X provided (Take Z from normal)
+                elif directional_vector_z == None and len(attr_info_ordered[idx]['pivot_index']) > 0: #If Z isnt provided origin normal is used.
+                    directional_vector_z = normal_vector_local @ obj_evaluated.matrix_world.inverted()
+                    directional_vector_z = directional_vector_z.normalized()
+
+                    orthagonal_xyz_axis =gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
+    
+                    #Rotational matrix from orthagonal axis vectors
+                    rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
+                    print("Calculating Z")
+
+
+                #If only X and Z provided (Take Y fom cross product)
+                elif directional_vector_x and directional_vector_z and not directional_vector_y:
+
+                    directional_vector_y = directional_vector_z.cross(directional_vector_x) #Result is right handed coord system
+
+                    orthagonal_xyz_axis = gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
+                    rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
+                    print("Calculating Y")
                 else:
                     rotational_matrix = None
+
+
+
+                #Fix left handed coord system to right handed (Blender). Othervise mesh scale is negated.
+                if self.fix_left_handed_axis:
+                    right = is_right_handed(orthagonal_xyz_axis[0], orthagonal_xyz_axis[1], orthagonal_xyz_axis[2]) #Check if is right hand coord system
+                    if right == False:
+                        orthagonal_xyz_axis[1].negate() #Currently flipping Y axis but could be any axis
+
+
 
                 if self.remove_extra: #Remove verticies which belong to pivot point x axis and y axis. 
                     for vert_idx in attr_info_ordered[idx]['x_axis_index']:
