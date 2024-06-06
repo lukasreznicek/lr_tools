@@ -1,0 +1,2 @@
+1. ID Per Object. Automatically add atribute if not present 
+2. Selected only UVs and not synced the selection. So When pressing Origin, X, Y axis assignment it did nothing. 

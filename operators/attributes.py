@@ -432,6 +432,32 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
         default = True,
     ) # type: ignore
 
+    # take_z_axis_from_normal: bpy.props.BoolProperty(
+    #     name = "Take Z from normal",
+    #     description = "Average all normals from origin vertices",
+    #     default = False,
+    # ) # type: ignore
+
+    # take_z_axis_from_world_up_axis: bpy.props.BoolProperty(
+    #     name = "Take Z from up axis",
+    #     description = "World positive Z axis",
+    #     default = False,
+    # ) # type: ignore
+
+    # Define an EnumProperty for choosing the Z-axis source
+    z_axis_source: bpy.props.EnumProperty(
+        name="Z-axis: ",
+        description="Choose the source for the Z-axis",
+        items=[
+            ("DEFAULT", "From Attribute", "Take Z axis from user assigned attribute if possible"),
+            ("NORMAL", "From Normal", "Average normals from origin vertices"),
+            ("WORLD_UP", "World Up Axis", "Use the world positive Z axis"),
+        ],
+        default="DEFAULT",  # Default value is "From Normal"
+    )# type: ignore
+
+
+
     src_attr_name: bpy.props.StringProperty(
         name="Source Attribute",
         description="Attribute with stored obj info data",
@@ -449,7 +475,17 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
         
     def execute(self, context): 
-        
+        @staticmethod
+        def extract_directional_vectors(obj):
+            # Get the rotation matrix of the object in world space
+            rotation_matrix = obj.matrix_world.to_3x3()  # Get the 3x3 rotation part of the world matrix
+            
+            # Extract directional vectors
+            x_axis = rotation_matrix.col[0].normalized()  # Extract X-axis vector
+            y_axis = rotation_matrix.col[1].normalized()  # Extract Y-axis vector
+            z_axis = rotation_matrix.col[2].normalized()  # Extract Z-axis vector
+    
+            return x_axis, y_axis, z_axis
 
         @staticmethod
         def directional_vector_from_loop_indices(
@@ -923,56 +959,58 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
 
 
-                #Get rotational matrix from directional vectors
-                
-                #If All X, Y, Z provided,
-                if directional_vector_x and directional_vector_y and directional_vector_z:
-                    orthagonal_xyz_axis =gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
-    
-                    #Rotational matrix from orthagonal axis vectors
-                    rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
-                    print("All is provided")
 
 
-                #If only Z and Y provided (Take X from cross product)
-                elif directional_vector_y and directional_vector_z and not directional_vector_x:
-
-                    directional_vector_x = directional_vector_y.cross(directional_vector_z) #Result is right handed coord system
-
-                    orthagonal_xyz_axis = gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
-                    rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
-                    print("Calculating X")
-
-                #If only Y and X provided (Take Z from normal)
-                elif directional_vector_z == None and len(attr_info_ordered[idx]['pivot_index']) > 0: #If Z isnt provided origin normal is used.
+                if self.z_axis_source == "NORMAL":
+                    #If only Y and X provided (Take Z from normal)
+                        # if directional_vector_z == None and len(attr_info_ordered[idx]['pivot_index']) > 0 and directional_vector_x and directional_vector_y: #If Z isnt provided origin normal is used.
                     directional_vector_z = normal_vector_local @ obj_evaluated.matrix_world.inverted()
                     directional_vector_z = directional_vector_z.normalized()
+                
+                elif self.z_axis_source == "WORLD_UP":
+                    directional_vector_z = origin_position_local_avg + mathutils.Vector((0,0,1))
 
-                    orthagonal_xyz_axis =gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
-    
-                    #Rotational matrix from orthagonal axis vectors
-                    rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
+                #Get rotational matrix from directional vectors
+
+                #If only Z and Y provided (Take X from cross product)
+                if directional_vector_y and directional_vector_z and not directional_vector_x:
+                    directional_vector_x = directional_vector_y.cross(directional_vector_z) #Result is right handed coord system
+                    print("Calculating X")
+
+
+
+                #If only Y and X provided (Take Z from cross product)
+                elif directional_vector_x and directional_vector_y and not directional_vector_z: #If Z isnt provided origin normal is used.
+                    directional_vector_z = directional_vector_x.cross(directional_vector_y) #Result is right handed coord system
                     print("Calculating Z")
 
 
                 #If only X and Z provided (Take Y fom cross product)
                 elif directional_vector_x and directional_vector_z and not directional_vector_y:
-
                     directional_vector_y = directional_vector_z.cross(directional_vector_x) #Result is right handed coord system
-
-                    orthagonal_xyz_axis = gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
-                    rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
                     print("Calculating Y")
+
+                elif directional_vector_x and not directional_vector_y and not directional_vector_z:
+                    pass
+
+                #Get rotational matrix if all vectors provided
+                if directional_vector_x and directional_vector_y and directional_vector_z:
+                    orthagonal_xyz_axis =gram_schmidt_orthogonalization(directional_vector_x, directional_vector_y, directional_vector_z)
+
+                    #Fix left handed coord system to right handed (Blender). Othervise mesh scale is negated.
+                    if self.fix_left_handed_axis:
+                        right = is_right_handed(orthagonal_xyz_axis[0], orthagonal_xyz_axis[1], orthagonal_xyz_axis[2]) #Check if is right hand coord system
+                        if right == False:
+                            orthagonal_xyz_axis[1].negate() #Currently flipping Y axis but could be any axis
+
+
+                    rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
                 else:
                     rotational_matrix = None
 
 
 
-                #Fix left handed coord system to right handed (Blender). Othervise mesh scale is negated.
-                if self.fix_left_handed_axis:
-                    right = is_right_handed(orthagonal_xyz_axis[0], orthagonal_xyz_axis[1], orthagonal_xyz_axis[2]) #Check if is right hand coord system
-                    if right == False:
-                        orthagonal_xyz_axis[1].negate() #Currently flipping Y axis but could be any axis
+
 
 
 

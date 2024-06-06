@@ -1,4 +1,4 @@
-import bpy, bmesh, os,re
+import bpy, bmesh, os,re,time
 from mathutils import Vector, Matrix
 from ..utils import lr_functions
 from collections import defaultdict
@@ -377,6 +377,175 @@ class OBJECT_OT_lr_remove_checker(bpy.types.Operator):
 
 
 
+        return {'FINISHED'}
+
+
+
+
+
+#Slow Disabled
+class OBJECT_OT_join_selection_and_parent(bpy.types.Operator):
+    """For each selected object parent object is checked and meged with selection. Select only child, parent object is detected in script. Handles children reparenting"""
+    bl_idname = "object.join_with_parent"
+    bl_label = "Joins/merges current selection with its parent object"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+    def execute(self, context):
+        import bpy
+
+        def set_parent(child, parent):
+            child.parent = parent
+            child.matrix_parent_inverse = parent.matrix_world.inverted()
+
+        store_obj_sel = bpy.context.selected_objects
+        store_active_sel_parent = bpy.context.view_layer.objects.active.parent
+        bpy.ops.object.select_all(action='DESELECT')
+
+        parent_objs = []
+
+        for obj in store_obj_sel:
+
+            if obj.parent:
+                parent = obj.parent
+                parent_objs.append(parent)
+                obj.select_set(True)
+                obj.parent.select_set(True)
+                bpy.context.view_layer.objects.active = parent
+
+
+                for child in obj.children:
+                    set_parent(child,parent)
+
+                bpy.ops.object.join()
+                
+                bpy.ops.object.select_all(action='DESELECT')
+                
+            
+        #restore
+        for obj in parent_objs:
+            obj.select_set(True)
+
+        bpy.context.view_layer.objects.active = store_active_sel_parent
+
+            
+                    
+        return {'FINISHED'}
+    
+
+def set_parent(child, parent):
+    mat_world = child.matrix_world
+    child.parent = parent
+    child.matrix_world = mat_world            
+    
+
+# def join_objects(obj1, obj2, deps_graph, remove_original_obj2 = True):
+#     """Obj2 is added to Obj1"""
+#     bm = bmesh.new()
+
+#     bm.from_object(obj2,deps_graph)
+#     bm.transform(obj2.matrix_world)
+#     bm.transform(obj1.matrix_world.inverted())
+
+#     bm.from_object(obj1,deps_graph)
+
+#     bm.to_mesh(obj1.data)
+#     if remove_original_obj2:
+#         bpy.data.objects.remove(obj2)
+def join_objects(obj1, obj2, remove_original_obj2 = True):
+    """Obj2 is added to Obj1. Fast. Does not apply modifiers, takes a long time."""
+    
+    #--- Material IDs reassignment ---
+    obj2_materials = obj2.data.materials.values() #Empty = None, othervise material
+    obj2_polycount = len(obj2.data.polygons)
+    obj2_mat_ids = [0]*obj2_polycount
+    obj2_mat_ids_changed = list(obj2_mat_ids)
+
+    obj2.data.polygons.foreach_get("material_index", obj2_mat_ids)
+    obj1_materials = obj1.data.materials.values()
+    material_pairs = [] #(obj2 mat index, obj1 mat index)
+    for idx,material in enumerate(obj2_materials):
+        if material in obj1_materials:
+            material_pairs.append((idx,obj1_materials.index(material)))
+        else:
+            obj1.data.materials.append(material)
+            obj1_materials.append(material) #If same materials in obj2 then merge them. Remove this line to keep same materials
+            material_pairs.append((idx,len(obj1.data.materials)-1))
+
+
+    if len(material_pairs) == 1:
+        for idx in range(len(obj2_mat_ids)):
+            obj2_mat_ids_changed[idx] = material_pairs[0][1]
+    else:
+        for idx in range(len(obj2_mat_ids)):
+            for pair in material_pairs:
+                if obj2_mat_ids[idx] == pair[0]:
+                    obj2_mat_ids_changed[idx]=pair[1]
+
+    obj2.data.polygons.foreach_set("material_index", obj2_mat_ids_changed)
+    #--- End ---
+
+    bm = bmesh.new()
+    bm.from_mesh(obj2.data)
+
+
+    bm.transform(obj2.matrix_world)
+    bm.transform(obj1.matrix_world.inverted())
+
+    bm.from_mesh(obj1.data)
+
+
+    # for slot in obj1.material_slots:
+    #     bm.faces.ensure_lookup_table()  # Ensure faces are ready
+    #     for f in bm.faces:
+    #         if f.material_index == slot.index:
+    #             f.material_index = slot.index  # Assign the same material index
+
+    bm.to_mesh(obj1.data)
+    if remove_original_obj2:
+        bpy.data.objects.remove(obj2)
+    bm.free()
+    
+    
+class OBJECT_OT_join_selection_and_parent_bmesh(bpy.types.Operator):
+    """For each selected object parent object is checked and meged with selection. Select only child, parent object is detected in script. Handles children reparenting"""
+    bl_idname = "object.join_with_parent_bmesh"
+    bl_label = "Joins/merges current selection with its parent object"
+    bl_options = {'REGISTER', 'UNDO'}
+
+
+    def execute(self, context):
+        import bpy
+        import bmesh
+        import time
+        s_time = time.time()
+        store_obj_sel = bpy.context.selected_objects
+        store_active_sel_parent = bpy.context.view_layer.objects.active.parent
+        bpy.ops.object.select_all(action='DESELECT')
+
+        
+        parent_objs = []
+        dg = bpy.context.evaluated_depsgraph_get()
+        for obj in store_obj_sel:
+            if obj.parent:
+                parent_objs.append(obj.parent)
+                for child in obj.children:
+
+                    set_parent(child,obj.parent)
+                
+                join_objects(obj.parent, obj, remove_original_obj2 = False)
+
+        for obj in store_obj_sel:
+            bpy.data.objects.remove(obj)
+
+        #restore
+        for obj in parent_objs:
+            obj.select_set(True)
+
+        bpy.context.view_layer.objects.active = store_active_sel_parent
+        elapsed_time = time.time() - s_time
+        time = f"In: {elapsed_time:.3f}s"
+        self.report({'INFO'}, time)
         return {'FINISHED'}
 
 
