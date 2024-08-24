@@ -194,45 +194,118 @@ class OBJECT_OT_lr_material_cleanup(bpy.types.Operator):
                             if re.search(res[0], src_material.name):
                                 matches.append(src_material)
                         obj_material.material = matches[0]
-
-
         return {'FINISHED'}		
 
+def get_nereast_parallel_axis_from_local_obj_rotation():
+    import mathutils
+    # Get the active area and its space data
+    area = bpy.context.area
+    space = area.spaces.active
+    region_3d = space.region_3d
+
+    # Get the camera view rotation quaternion
+    camera_quat = region_3d.view_rotation
+
+    # Get the selected object
+    obj = bpy.context.object
+
+    # Ensure the object has been selected and is valid
+    if obj is None or obj.type != 'MESH':
+        print("Please select a valid mesh object.")
+    else:
+        # Get the object's world transformation matrix
+        obj_matrix = obj.matrix_world
+
+        # Extract the object's local axes as vectors
+        x_axis_local = mathutils.Vector((1, 0, 0))
+        y_axis_local = mathutils.Vector((0, 1, 0))
+        z_axis_local = mathutils.Vector((0, 0, 1))
+
+        # Convert local axes to world space vectors
+        x_axis_world = obj_matrix @ x_axis_local
+        y_axis_world = obj_matrix @ y_axis_local
+        z_axis_world = obj_matrix @ z_axis_local
+
+        # Convert camera quaternion to a view direction vector (assuming no scaling)
+        camera_view_direction = camera_quat @ mathutils.Vector((0, 0, -1))
+
+        # print(f'Camera Dir vector: {camera_view_direction}')
+        # Compute the dot products between the camera view direction and object local axes
+        dot_x = camera_view_direction.dot(x_axis_world.normalized())
+        dot_y = camera_view_direction.dot(y_axis_world.normalized())
+        dot_z = camera_view_direction.dot(z_axis_world.normalized())
+
+        # Determine the axis with the highest dot product
+        dot_products = {'X': dot_x, 'Y': dot_y, 'Z': dot_z}
+        dot_products_abs = {'X': abs(dot_x), 'Y': abs(dot_y), 'Z': abs(dot_z)}
+
+        most_parallel_axis = max(dot_products_abs, key=dot_products_abs.get)
+
+        print(f'Axis: {most_parallel_axis}, Is positive:  {False if dot_products[most_parallel_axis] < 0 else True}')
+        # Returns most parellel axis and if positive or negative direction
+        return (most_parallel_axis, False if dot_products[most_parallel_axis] < 0 else True)
+
+        # # Print the results
+        # print(f"Most parallel axis to the camera view direction: {most_parallel_axis}")
+        # print(f"Dot Products - X: {dot_x}, Y: {dot_y}, Z: {dot_z}")
 
 
-class OBJECT_OT_view_object_rotate(bpy.types.Operator):
-    bl_idname = "object.view_object_rotate"
-    bl_label = "Rotates object 90° based on viewport position"
+class LR_OT_view_object_rotate(bpy.types.Operator):
+    bl_idname = "lr.view_object_rotate"
+    bl_label = "Rotates object or UVs 90° based on viewport position"
     bl_options = {'REGISTER', 'UNDO'}
     
-    view_rotate_left: bpy.props.BoolProperty(name="Left", default= False,options={'SKIP_SAVE'})    
+    # view_rotate_left: bpy.props.BoolProperty(name="Rotate Left", default= False,options={'SKIP_SAVE'})    
+    rotate_left: bpy.props.BoolProperty(name="Rotate Left", default= False, options={'SKIP_SAVE'})  
 
+    @classmethod
+    def poll(cls, context):
+        # Check if the active space is the UV/Image Editor
+        return context.space_data.type in {'IMAGE_EDITOR', 'VIEW_3D'}
+    
+    def execute(self, context):        
+        #Object Rotation    
 
-    def execute(self, context):
-        
-        axis = lr_functions.get_view_orientation()
-
-        #Rotate to Right
-        if self.view_rotate_left == False:
-            #FRONT, LEFT, BOTTOM
-            if axis[1] == True:
-                bpy.ops.transform.rotate(value=1.5708, constraint_axis=(axis[0][0], axis[0][1], axis[0][2]))
-            #BACK, RIGHT, TOP
-            if axis[1] == False:
-                bpy.ops.transform.rotate(value=-1.5708, constraint_axis=(axis[0][0], axis[0][1], axis[0][2]))
-
-
-        #Rotate to left
-        if self.view_rotate_left == True:
-            #FRONT, LEFT, BOTTOM
-            if axis[1] == True:
-                bpy.ops.transform.rotate(value=-1.5708, constraint_axis=(axis[0][0], axis[0][1], axis[0][2]))
-            #BACK, RIGHT, TOP
-            if axis[1] == False:
-                bpy.ops.transform.rotate(value=1.5708, constraint_axis=(axis[0][0], axis[0][1], axis[0][2]))
-
-            
+        if bpy.context.space_data.type == "VIEW_3D":
+           
+           if bpy.context.scene.transform_orientation_slots[0].type == "LOCAL":
+                val = get_nereast_parallel_axis_from_local_obj_rotation()
+                # if val[0] == 'X' and val[1] == True:
+                if self.rotate_left == False:
                     
+                    bpy.ops.transform.rotate(value=-1.5708 if val[1] == True else 1.5708, orient_type='LOCAL', orient_axis=val[0])
+                else:
+                    bpy.ops.transform.rotate(value=1.5708 if val[1] == True else -1.5708, orient_type='LOCAL', orient_axis=val[0])
+
+           else:
+                axis = lr_functions.get_view_orientation()
+                if self.rotate_left == False:
+                    #FRONT, LEFT, BOTTOM
+                    if axis[1] == True:
+                        bpy.ops.transform.rotate(value=1.5708, constraint_axis=(axis[0][0], axis[0][1], axis[0][2]))
+                    #BACK, RIGHT, TOP
+                    if axis[1] == False:
+                        bpy.ops.transform.rotate(value=-1.5708, constraint_axis=(axis[0][0], axis[0][1], axis[0][2]))
+
+
+                #Rotate to left
+                if self.rotate_left == True:
+                    #FRONT, LEFT, BOTTOM
+                    if axis[1] == True:
+                        bpy.ops.transform.rotate(value=-1.5708, constraint_axis=(axis[0][0], axis[0][1], axis[0][2]))
+                    #BACK, RIGHT, TOP
+                    if axis[1] == False:
+                        bpy.ops.transform.rotate(value=1.5708, constraint_axis=(axis[0][0], axis[0][1], axis[0][2]))
+
+        #UV Rotation
+        if bpy.context.space_data.type == "IMAGE_EDITOR":
+            if self.rotate_left:
+                bpy.ops.transform.rotate(value=-1.5708, orient_axis='Z', orient_type='VIEW', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='VIEW')
+            else:
+                bpy.ops.transform.rotate(value=1.5708, orient_axis='Z', orient_type='VIEW', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='VIEW')
+            return {'FINISHED'}
+
+
         return {'FINISHED'}
 
 

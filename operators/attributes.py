@@ -1086,7 +1086,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
 
 
-
 class OBJECT_OT_lr_attribute_increment_int_values(bpy.types.Operator):
     '''On Active attribute\nMultiple object selection. Active int attributes will be incremented on vertex domain per object. Decimal values stay unchanged.\nActive object gets 0'''
     bl_idname = "geometry.lr_set_per_obj_attribute"

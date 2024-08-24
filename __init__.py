@@ -24,45 +24,35 @@ bl_info = {
 
 import bpy, os, bmesh, subprocess
 
-from .operators.attributes import (OBJECT_OT_lr_add_attribute,
-                                   OBJECT_OT_lr_attribute_increment_values_mesh,
-                                   OBJECT_OT_lr_remove_attribute,OBJECT_OT_lr_obj_info_id_by_uv_island, 
-                                   OBJECT_OT_lr_attribute_select_by_index,
-                                   OBJECT_OT_lr_attribute_select_by_name,
-                                   OBJECT_OT_lr_set_obj_info_attr,
-                                   OBJECT_OT_lr_recover_obj_info,
-                                   OBJECT_OT_lr_attribute_increment_int_values)
 
-from .operators.unwrap_in_place import LR_Unwrap
-
-from .operators.set_vertex_color import (OBJECT_OT_lr_assign_vertex_color,
-                                         lr_offset_vertex_color,
-                                         lr_pick_vertex_color)
-from .operators.set_vertex_alpha import lr_vertex_rgb_to_alpha
-
-from .operators.select import lr_select_obj_by_topology,lr_deselect_duplicate
-from .operators.replace_children import lr_replace_children
-from .operators.sculpt import lr_multires_sculpt_offset
-from .operators.object_drop import OBJECT_OT_lr_drop_object
-
+from .operators import attributes
+from .operators import set_vertex_color
+from .operators import set_vertex_alpha
+from .operators import set_vertex_alpha
+from .operators import select
+from .operators import replace_children
+from .operators import sculpt
+from .operators import object_drop
 from .operators import UCX
 from .operators import uv_misc
 from .operators import mesh_misc
+from .operators import modifiers
 
-from bpy.types import Panel, UIList
 from bpy.props import IntProperty, CollectionProperty, StringProperty,FloatVectorProperty,BoolProperty
 
+from bpy.types import Panel, UIList
 from bpy.types import Menu
 from bpy.types import Operator
-from bpy.app.handlers import persistent
 
-from .operators import modifiers
+from bpy.app.handlers import persistent
 
 from bl_ui.properties_object import ObjectButtonsPanel #For sub panels
 from bpy.utils import previews # for icons
 
 
 
+#MENUS
+from .menus import pie_menus
 # ------------------------   ICONS   ------------------------
 
 def register_icons():
@@ -85,7 +75,9 @@ def unregister_icons():
 
 class AddonPreferences(bpy.types.AddonPreferences):
     bl_idname = __name__
-                                    
+
+
+
     def draw(self, context):
         # Search for keymap items in the addon's keymap list (addon_keymaps) from within Blender settings and display the menu
 
@@ -104,7 +96,7 @@ class AddonPreferences(bpy.types.AddonPreferences):
             for km_con in kc.keymaps:
                 if km_add.name == km_con.name:
                     km = km_con
-                    break   
+                    break
 
             for kmi_con in km.keymap_items:
                 if kmi_add.idname == kmi_con.idname:
@@ -122,8 +114,6 @@ class AddonPreferences(bpy.types.AddonPreferences):
             old_km_name = km.name
 
 
-
-
 # ------------------------   KEYMAPS   ------------------------
 
 addon_keymaps = []
@@ -131,9 +121,11 @@ def register_keymaps():
     wm = bpy.context.window_manager
     kc = wm.keyconfigs.addon
     if kc:
-        km = kc.keymaps.new(name='UV Editor', space_type= 'EMPTY')
-        kmi = km.keymap_items.new('uv.lr_unwrap', type= 'X', value='PRESS', shift=True, ctrl=True, alt=False)
-        addon_keymaps.append((km, kmi))
+        
+        # km = kc.keymaps.new(name='UV Editor', space_type= 'EMPTY')
+        # kmi = km.keymap_items.new('uv.lr_unwrap', type= 'X', value='PRESS', shift=True, ctrl=True, alt=False)
+        # addon_keymaps.append((km, kmi))
+
 
         # km = kc.keymaps.new(name='UV Editor', space_type= 'EMPTY')
         # kmi = km.keymap_items.new('uv.lr_unwrap2', type= 'X', value='PRESS', shift=True, ctrl=True, alt=False)
@@ -143,13 +135,40 @@ def register_keymaps():
         km = kc.keymaps.new(name='Sculpt', space_type= 'EMPTY')
         kmi = km.keymap_items.new('lr.offset_multires_sculpt_subd', type= 'D', value='PRESS', shift=True, ctrl=False, alt=False)
         kmi.properties.decrease = True
+        kmi.active = False
         addon_keymaps.append((km, kmi))
         
         km = kc.keymaps.new(name='Sculpt', space_type= 'EMPTY')
         kmi = km.keymap_items.new('lr.offset_multires_sculpt_subd', type= 'D', value='PRESS', shift=False, ctrl=False, alt=False)
         kmi.properties.decrease = False
+        kmi.active = False
         addon_keymaps.append((km, kmi))
 
+
+        km = kc.keymaps.new(name='3D View', space_type= 'VIEW_3D')
+        kmi = km.keymap_items.new('lr.view_object_rotate', type= 'TWO', value='PRESS', shift=True, ctrl=False, alt=False)
+        kmi.properties.rotate_left = False
+        kmi.active = False
+        addon_keymaps.append((km, kmi))
+
+        km = kc.keymaps.new(name='3D View', space_type= 'VIEW_3D')
+        kmi = km.keymap_items.new('lr.view_object_rotate', type= 'ONE', value='PRESS', shift=True, ctrl=False, alt=False)
+        kmi.properties.rotate_left = True
+        kmi.active = False
+        addon_keymaps.append((km, kmi))
+
+        km = kc.keymaps.new(name='Image', space_type= 'IMAGE_EDITOR')
+        kmi = km.keymap_items.new('lr.view_object_rotate', type= 'TWO', value='PRESS', shift=True, ctrl=False, alt=False)
+        kmi.properties.rotate_left = False
+        kmi.active = False
+        addon_keymaps.append((km, kmi))
+
+        km = kc.keymaps.new(name='Image', space_type= 'IMAGE_EDITOR')
+        kmi = km.keymap_items.new('lr.view_object_rotate', type= 'ONE', value='PRESS', shift=True, ctrl=False, alt=False)
+        kmi.properties.rotate_left = True
+        kmi.active = False
+        addon_keymaps.append((km, kmi))
+# lr.view_object_rotate
 
 def unregister_keymaps():
 
@@ -715,8 +734,8 @@ class VIEW3D_PT_lr_delete_modifier(bpy.types.Panel):
     bl_region_type = 'WINDOW'
     bl_context = "object"
     bl_category = "LR"
-    # bl_options = {'DEFAULT_CLOSED'}
-    # bl_options = {'DEFAULT_CLOSED'}
+    bl_options = {'DEFAULT_CLOSED'}
+
     def draw(self, context):
         layout = self.layout
 
@@ -788,8 +807,8 @@ class DATA_PT_lr_attribute_extend(bpy.types.Panel):
         row.operator("geometry.lr_remove_attribute", text="Remove by name", icon ='REMOVE')
         row = layout.row(align=True)
         row.operator("geometry.lr_select_attribute_by_name", text="Select by Name", icon ='PASTEDOWN')
-        #row.operator("geometry.lr_select_attribute_by_index", text="Select by Index", icon ='PASTEDOWN')
 
+        #row.operator("geometry.lr_select_attribute_by_index", text="Select by Index", icon ='PASTEDOWN')
         # Mark the operator properties as user-adjustable
 
 
@@ -819,13 +838,12 @@ class VIEW3D_PT_lr_add_remove_uv(bpy.types.Panel):
         c_row.scale_x = 0.3
         c_row.prop(lr_tools, "remove_uv_index",icon_only=True)
 
-
         col = layout.column(align=True)
         col.operator("object.lr_remove_active_uv_set", text="Remove Active", icon ='REMOVE')
         c_row = col.row(align=True)
         c_row.operator("object.lr_remove_uv_by_name", text="Remove:", icon ='REMOVE')
         c_row.prop(lr_tools, "uv_map_delete_by_name",icon_only=True)
-                
+        
 
 class OPN_OT_open_folder(Operator):
     """Opens Current Folder"""
@@ -839,34 +857,39 @@ class OPN_OT_open_folder(Operator):
     def execute(self, context):
         full_path = bpy.path.abspath("//")
         subprocess.Popen('explorer "{0}"'.format(full_path))
-        
         return {'FINISHED'}
-
-
 
 def menu_func(self, context):
     self.layout.operator(OPN_OT_open_folder.bl_idname)
  
 
 #UI End ---------------------------------------------------------------------------------
-classes = (AddonPreferences,
+classes = (
+            
+            #Pie Menus
+            # pie_menus.OBJECT_OT_snap_preset_vertex,
+            # pie_menus.VIEW3D_MT_PIE_snapping_presets,
+
+            AddonPreferences,
             lr_tool_settings_object,
             lr_tool_settings,
 
-            # lr_exportformask,             #Moved to LR Export Addon
-            # lr_export_but_one_material,   #Moved to LR Export Addon
             OPN_OT_open_folder,
-            LR_Unwrap,
-            OBJECT_OT_lr_assign_vertex_color,
-            lr_offset_vertex_color,
-            lr_vertex_rgb_to_alpha,
-            lr_select_obj_by_topology,
-            lr_replace_children,
+            # LR_Unwrap,
+
+            #Vertex Color
+            set_vertex_color.OBJECT_OT_lr_assign_vertex_color,
+            set_vertex_color.lr_offset_vertex_color,
+            set_vertex_color.lr_pick_vertex_color,
+            set_vertex_alpha.lr_vertex_rgb_to_alpha,
+            
+
+            replace_children.lr_replace_children,
             UCX.hideUCX,
             UCX.nameUCX,
             UCX.unhideUCX,
             UCX.hide_unhide_lattice,
-            
+                        
             uv_misc.OBJECT_OT_lr_uv_map_by_index_custom,
             uv_misc.OBJECT_OT_lr_uv_map_by_index,
             uv_misc.UVIndexName,
@@ -885,7 +908,7 @@ classes = (AddonPreferences,
 
             mesh_misc.OBJECT_OT_material_slot_remove_unused_on_selected,
             mesh_misc.MESH_OT_getEdgesLength,
-            mesh_misc.OBJECT_OT_view_object_rotate,
+            mesh_misc.LR_OT_view_object_rotate,
             mesh_misc.OBJECT_OT_hide_by_name,
             mesh_misc.OBJECT_OT_hide_subsurf_modifier,
             mesh_misc.OBJECT_OT_hide_wire_objects,
@@ -896,10 +919,13 @@ classes = (AddonPreferences,
             mesh_misc.OBJECT_OT_lr_rebuild,
             # mesh_misc.OBJECT_OT_join_selection_and_parent,
             mesh_misc.OBJECT_OT_join_selection_and_parent_bmesh,
-            lr_pick_vertex_color,
-            lr_multires_sculpt_offset,
-            lr_deselect_duplicate,
+            
+            sculpt.lr_multires_sculpt_offset,
 
+            select.lr_select_obj_by_topology,
+            select.lr_deselect_duplicate,
+            
+            
             #PANELS
             DATA_PT_lr_attribute_extend,
             VIEW3D_PT_lr_vertex,
@@ -912,30 +938,29 @@ classes = (AddonPreferences,
             
             VIEW3D_PT_lr_object,
             VIEW3D_PT_lr_obj_info,
-            OBJECT_OT_lr_drop_object,
+            object_drop.OBJECT_OT_lr_drop_object,
+            #Pie Menus
 
             #UVs
             
-
-
             #Attributes
-            OBJECT_OT_lr_add_attribute, 
-            OBJECT_OT_lr_remove_attribute,
-            OBJECT_OT_lr_attribute_select_by_index,
-            OBJECT_OT_lr_attribute_select_by_name,
-            OBJECT_OT_lr_set_obj_info_attr,
-            OBJECT_OT_lr_recover_obj_info,
-            OBJECT_OT_lr_attribute_increment_int_values,
-            OBJECT_OT_lr_attribute_increment_values_mesh,
-            OBJECT_OT_lr_obj_info_id_by_uv_island,
+            attributes.OBJECT_OT_lr_add_attribute,
+            attributes.OBJECT_OT_lr_attribute_increment_values_mesh,
+            attributes.OBJECT_OT_lr_remove_attribute,
+            attributes.OBJECT_OT_lr_obj_info_id_by_uv_island, 
+            attributes.OBJECT_OT_lr_attribute_select_by_index,
+            attributes.OBJECT_OT_lr_attribute_select_by_name,
+            attributes.OBJECT_OT_lr_set_obj_info_attr,
+            attributes.OBJECT_OT_lr_recover_obj_info,
+            attributes.OBJECT_OT_lr_attribute_increment_int_values,
 
             #Modifiers
             VIEW3D_PT_lr_delete_modifier,
             modifiers.OBJECT_OT_delete_modifier
             
-
-            )
-
+            #Menus
+        )
+ 
 
 @persistent
 def lr_palette(scene):

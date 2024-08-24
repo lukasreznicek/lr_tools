@@ -226,79 +226,88 @@ class RenameActiveUVSet(bpy.types.Operator):
 	
 
 class lr_replaceobjects(bpy.types.Operator):
-	"""Replaces inactive objects from active with parents"""
-	bl_idname = "object.lr_replace_objects"
-	bl_label = "Replace objects. Active to inactive(LR Tools)"
-	
-	@classmethod
-	def poll(cls, context):
-		return context.mode == 'OBJECT'
+    """Replaces inactive objects from active with parents"""
+    bl_idname = "object.lr_replace_objects"
+    bl_label = "Replace objects. Active to inactive(LR Tools)"
+
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'OBJECT'
 
 
-	def execute(self, context):
+    def execute(self, context):
 
-		#Main variables		
-		act = bpy.context.active_object
-		selected = bpy.context.selected_objects
-		ina = selected.copy()
-		ina.remove(act)
-		ina_number = len(ina)
-		
-		new = []
-		fordelete = []
-		for obj in range(0,ina_number):
-			new_obj = act.copy()
-			bpy.context.scene.collection.objects.link(new_obj)
-			new.append(new_obj)
-
-
-		for a,b in zip(ina,new):
-			#Update parents	
-			if a.parent:
-				parent = a.parent
-				a.parent = None
-				b.parent = parent
-			else:
-				print('Does not have a parent') 
-			#Match locations
-			matrix =  a.matrix_world
-			#b.location = a.location
-			#b.scale = a.scale
-			#b.rotation_euler = a.rotation_euler			
-			b.matrix_world = matrix
-			b_name = a.name
-			a.name = "TemporaryForDelete"
-			fordelete.append(a)
-			b.name = b_name		
+        #Main variables		
+        act = bpy.context.active_object
+        selected = bpy.context.selected_objects
+        ina = selected.copy()
+        ina.remove(act)
+        ina_number = len(ina)
+        
+        new = []
+        fordelete = []
+        for obj in range(0,ina_number):
+            new_obj = act.copy()
+            bpy.context.scene.collection.objects.link(new_obj)
+            new.append(new_obj)
 
 
-		#Update children		
-			if a.children:
-				print('preforming child relinking')
-				
-				childrenparent = []
-				childrenparent.append(b)
-				print('Reparenting to:', childrenparent[0])
-				
-				
-				children = []
-				for obj in a.children:
-					children.append(obj)
-				print('Children object being relinked:', children)
-			
-				
-				for obj in children:
-					child_matrix = obj.matrix_world
-					obj.parent = None
-					obj.parent = childrenparent[0]
-					obj.matrix_world = child_matrix
-					
-			else:
-				print('Object has no children')			
-			
-		bpy.ops.object.delete({"selected_objects": fordelete})
-		 
-		return {'FINISHED'}			
+        for a,b in zip(ina,new):
+            #Update parents	
+            if a.parent:
+                parent = a.parent
+                a.parent = None
+                b.parent = parent
+            else:
+                print('Does not have a parent') 
+            #Match locations
+            matrix =  a.matrix_world
+            #b.location = a.location
+            #b.scale = a.scale
+            #b.rotation_euler = a.rotation_euler			
+            b.matrix_world = matrix
+            b_name = a.name
+            a.name = "TemporaryForDelete"
+            fordelete.append(a)
+            b.name = b_name		
+
+
+        #Update children		
+            if a.children:
+                print('preforming child relinking')
+                
+                childrenparent = []
+                childrenparent.append(b)
+                print('Reparenting to:', childrenparent[0])
+                
+                
+                children = []
+                for obj in a.children:
+                    children.append(obj)
+                print('Children object being relinked:', children)
+            
+                
+                for obj in children:
+                    child_matrix = obj.matrix_world
+                    obj.parent = None
+                    obj.parent = childrenparent[0]
+                    obj.matrix_world = child_matrix
+							
+        
+        bpy.ops.object.select_all(action='DESELECT')
+        for obj in fordelete:
+            obj.select_set(True)
+        
+        bpy.ops.object.delete(use_global=True)
+
+        for obj in new:
+            obj.select_set(True)
+        act.select_set(True)
+        
+        # bpy.ops.object.delete({"selected_objects": fordelete})
+            
+
+        return {'FINISHED'}			
 
 
 class move_uv_map_up(bpy.types.Operator):
@@ -572,8 +581,6 @@ class lr_grid_redistribute_uv_islands(bpy.types.Operator):
 		return {'FINISHED'}	
 	
 
-
-
 class LR_Tools_OT_UVCopyPaste(bpy.types.Operator):
 	'''For copying UVs from one UVmap to another on the same object.\nSelect UVs to copy and run operator. UVMap will be added if missing.\n\nTo separate island and move, select vertices with Disabled 'Sticky Selection Mode' in UV window'''
 	bl_idname = "lr_tools.uv_copy_paste"
@@ -610,7 +617,7 @@ class LR_Tools_OT_UVCopyPaste(bpy.types.Operator):
 			bmesh.update_edit_mesh(obj.data)
 		return {'FINISHED'}
 		
-
+		
 class LR_TOOLS_OT_uv_offset_by_object_id(bpy.types.Operator):
 	'''Select multiple objects and run the operator. UVs for each object will be moved into unique V index'''
 	

@@ -22,6 +22,53 @@ def get_outliner_selection():
     with bpy.context.temp_override(area = outliner_area):
         return bpy.context.selected_ids
 
+def test():
+    import mathutils
+    # Get the active area and its space data
+    area = bpy.context.area
+    space = area.spaces.active
+    region_3d = space.region_3d
+
+    # Get the camera view rotation quaternion
+    camera_quat = region_3d.view_rotation
+
+    # Get the selected object
+    obj = bpy.context.object
+
+    # Ensure the object has been selected and is valid
+    if obj is None or obj.type != 'MESH':
+        print("Please select a valid mesh object.")
+    else:
+        # Get the object's world transformation matrix
+        obj_matrix = obj.matrix_world
+
+        # Extract the object's local axes as vectors
+        x_axis_local = mathutils.Vector((1, 0, 0))
+        y_axis_local = mathutils.Vector((0, 1, 0))
+        z_axis_local = mathutils.Vector((0, 0, 1))
+
+        # Convert local axes to world space vectors
+        x_axis_world = obj_matrix @ x_axis_local
+        y_axis_world = obj_matrix @ y_axis_local
+        z_axis_world = obj_matrix @ z_axis_local
+
+        # Convert camera quaternion to a view direction vector (assuming no scaling)
+        camera_view_direction = camera_quat @ mathutils.Vector((0, 0, -1))
+
+        print(f'Camera Dir vector: {camera_view_direction}')
+        # Compute the dot products between the camera view direction and object local axes
+        dot_x = camera_view_direction.dot(x_axis_world.normalized())
+        dot_y = camera_view_direction.dot(y_axis_world.normalized())
+        dot_z = camera_view_direction.dot(z_axis_world.normalized())
+
+        # Determine the axis with the highest dot product
+        dot_products = {'X': dot_x, 'Y': dot_y, 'Z': dot_z}
+        most_parallel_axis = max(dot_products, key=dot_products.get)
+
+        # Print the results
+        print(f"Most parallel axis to the camera view direction: {most_parallel_axis}")
+        print(f"Dot Products - X: {dot_x}, Y: {dot_y}, Z: {dot_z}")
+
 
 
 def get_view_orientation() -> ((bool,bool,bool),bool):
@@ -31,9 +78,10 @@ def get_view_orientation() -> ((bool,bool,bool),bool):
     Returns viewport axis alignment. Viewport view orientation.
     Returns: ((Bool,Bool,Bool),Bool) = ((X,Y,Z)PositiveOrNegative)
     '''
+
     r3d = bpy.context.area.spaces.active.region_3d
     view_matrix = r3d.view_matrix
-    x,y,z = view_matrix.to_3x3()
+    # x,y,z = view_matrix.to_3x3()
     x,y,z = r3d.view_rotation @ Vector((0.0, 0.0, -1.0))
 
     view_rotation = (x,y,z)
@@ -71,6 +119,65 @@ def get_view_orientation() -> ((bool,bool,bool),bool):
             return ((False,False,True),True)
         else:
             return ((False,False,True),False)
+
+
+
+def get_view_orientation_to_object_local() -> ((bool,bool,bool),bool):
+    '''
+    Libs: bpy, mathutils.Vector
+    Returns viewport axis alignment. Viewport view orientation.
+    Returns: ((Bool,Bool,Bool),Bool) = ((X,Y,Z)PositiveOrNegative)
+    '''
+    r3d = bpy.context.area.spaces.active.region_3d
+    view_matrix = r3d.view_matrix
+    x,y,z = view_matrix.to_3x3()
+    x,y,z = r3d.view_rotation @ Vector((0.0, 0.0, -1.0))
+
+
+    view_rotation = (x,y,z)
+    view_rotation_abs = (abs(x),abs(y),abs(z))
+
+
+
+    active_object = bpy.context.active_object
+
+
+
+
+
+    axis_of_highest_index = view_rotation_abs.index(max(view_rotation_abs))
+
+
+    #Determine whether it's positive or negative axis:
+    if view_rotation[axis_of_highest_index] >0:
+        axis_positive = True
+    else:
+        axis_positive = False
+
+
+    #X Axis
+    if axis_of_highest_index == 0:
+        if axis_positive == True:
+            return ((True,False,False),True)
+        else:
+            return ((True,False,False),False)
+
+
+    #Y Axis
+    if axis_of_highest_index == 1:
+        if axis_positive == True:
+            return ((False,True,False),True)
+        else:
+            return ((False,True,False),False)
+
+
+    #Z Axis
+    if axis_of_highest_index == 2:
+        if axis_positive == True:
+            return ((False,False,True),True)
+        else:
+            return ((False,False,True),False)
+
 
 
 

@@ -1,0 +1,12 @@
+schema_version = "1.0.0"
+version = "1.0.0"
+id = "lrtools"
+name = "LR Tools"
+tagline = "Aimed to simplify object exporting"
+maintainer = "Lukas Reznicek <lukasreznicek@gmail.com>"
+type = "add-on"
+tags = ["object","uv","mesh"]
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-2.0-or-later"]
+#website = ""
+copyright = ["2024 Lukas Reznicek"]
