@@ -859,8 +859,26 @@ class OPN_OT_open_folder(Operator):
         subprocess.Popen('explorer "{0}"'.format(full_path))
         return {'FINISHED'}
 
+
+
+class OPN_OT_open_config(Operator):
+    """Opens Config Folder"""
+    bl_idname = "window.open_config_path"
+    bl_label = "Open Startup Path"
+    bl_description = "Opens Current .blend Config Path"
+    bl_space_type =  "Window"
+    bl_region_type = "UI"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        # full_path = bpy.path.abspath("//")
+        full_path = bpy.utils.user_resource('CONFIG')
+        subprocess.Popen('explorer "{0}"'.format(full_path))
+        return {'FINISHED'}
+
 def menu_func(self, context):
     self.layout.operator(OPN_OT_open_folder.bl_idname)
+    self.layout.operator(OPN_OT_open_config.bl_idname)
  
 
 #UI End ---------------------------------------------------------------------------------
@@ -875,6 +893,7 @@ classes = (
             lr_tool_settings,
 
             OPN_OT_open_folder,
+            OPN_OT_open_config,
             # LR_Unwrap,
 
             #Vertex Color

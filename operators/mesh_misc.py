@@ -3,7 +3,7 @@ from mathutils import Vector, Matrix
 from ..utils import lr_functions
 from collections import defaultdict
 from collections import OrderedDict
-
+from .. import config
 
 class MESH_OT_getEdgesLength(bpy.types.Operator):
     bl_idname = "mesh.lr_get_edges_length"
@@ -315,31 +315,29 @@ class OBJECT_OT_lr_assign_checker(bpy.types.Operator):
     bl_label = "Assigns checker texture"
     bl_options = {'REGISTER', 'UNDO'}
     
-    
-    def execute(self, context): 
+    def execute(self, context):     
+        # script_folder = bpy.utils.script_paths()
+        # script_folder.reverse()
+        # texture_path = None
 
-        script_folder = bpy.utils.script_paths()
-        script_folder.reverse()
-        texture_path = None
+        # # print(os.path.dirname(os.path.realpath(__file__)))
+
+        # #Find script folder with addon
+        # found = False
+        # for path in script_folder:
+        #     path = os.path.join(path,'addons')
+        #     if os.path.exists(path):
+        #         if 'lr_tools' in os.listdir(path) or 'lr_tools-master' in os.listdir(path):
+        #             texture_full_path = os.path.join(path,'lr_tools','textures',texture_name)
+        #             found = True
+
+        # if found == False:
+        #     message = 'Addon folder name in scripts directory should be: lr_tools. Please Rename.'
+        #     self.report({'ERROR'}, message)
+        #     return {'FINISHED'}
 
         texture_name = 'T_CheckerMap_A.png'
-        # print(os.path.dirname(os.path.realpath(__file__)))
-
-
-        #Find script folder with addon
-        found = False
-        for path in script_folder:
-            path = os.path.join(path,'addons')
-            if os.path.exists(path):
-                if 'lr_tools' in os.listdir(path) or 'lr_tools-master' in os.listdir(path):
-                    texture_full_path = os.path.join(path,'lr_tools','textures',texture_name)
-                    found = True
-
-        if found == False:
-            message = 'Addon folder name in scripts directory should be: lr_tools. Please Rename.'
-            self.report({'ERROR'}, message)
-            return {'FINISHED'}
-        
+        texture_full_path = os.path.join(config.addon_folder_location,'textures',texture_name)
         #Load image
         bpy.data.images.load(texture_full_path, check_existing=True)
         
