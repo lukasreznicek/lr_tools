@@ -330,7 +330,8 @@ class lr_pick_vertex_color(bpy.types.Operator):
         return bpy.context.tool_settings.mesh_select_mode[2]   
     
     #property
-    pick_alpha: bpy.props.BoolProperty(name = 'Pick Alpha', description='Outputs alpha', default = False)
+    pick_alpha: bpy.props.BoolProperty(name = 'Pick Alpha', description='Outputs alpha', default = False) #type: ignore
+    pick_rgb_target_property: bpy.props.StringProperty(name= 'Target Property', description='', default="") #type: ignore
 
     def execute(self, context):
         
@@ -379,9 +380,12 @@ class lr_pick_vertex_color(bpy.types.Operator):
         a /= active_polygon.loop_total
 
         if self.pick_alpha == False:
-            bpy.context.tool_settings.image_paint.brush.color[0] = r
-            bpy.context.tool_settings.image_paint.brush.color[1] = g
-            bpy.context.tool_settings.image_paint.brush.color[2] = b
+            if self.pick_rgb_target_property == "":
+                return {'FINISHED'}
+            target = eval(self.pick_rgb_target_property)
+            target[0] = r
+            target[1] = g
+            target[2] = b
 
         if self.pick_alpha == True:
             bpy.context.scene.lr_tools.lr_vc_alpha_swatch = a

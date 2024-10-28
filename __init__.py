@@ -177,8 +177,6 @@ def unregister_keymaps():
     addon_keymaps.clear()
 
 
-
-
 # ------------------------   PROPERTIES   ------------------------
 # To acess properties: bpy.data.scenes['Scene'].lr_tools
 # Is assigned by pointer property below in class registration.
@@ -192,6 +190,7 @@ class lr_tool_settings(bpy.types.PropertyGroup):
     remove_uv_index: bpy.props.IntProperty(name="Index to remove", description="UV Map index to remove on selected objects", default=1, min = 1, soft_max = 5)# type: ignore
     vertex_color_offset_amount: bpy.props.FloatProperty(name="Offset amount", default=0.1, min = 0, max = 1)# type: ignore
     lr_vc_swatch: FloatVectorProperty(name="object_color",subtype='COLOR',default=(1.0, 1.0, 1.0),min=0.0, max=1.0,description="color picker")# type: ignore
+
     lr_vc_alpha_swatch: bpy.props.FloatProperty(name="Alpha Value", step = 5, default=0.5, min = 0, max = 1)# type: ignore
 
     hide_by_name: bpy.props.StringProperty(name="", description="Hide objects with this name", default="UCX_", maxlen=1024,)# type: ignore
@@ -224,19 +223,24 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
 
     def draw(self, context):
         lr_tools = context.scene.lr_tools
-        settings_l = bpy.context.tool_settings.image_paint        
+        # settings_l = bpy.context.tool_settings.image_paint 
 
-        active_brush = settings_l.brush 
+
+        new_brush = bpy.data.brushes.new('VertexSet')       
+        settings_l = bpy.context.tool_settings.vertex_paint  
+        # active_brush = settings_l.brush 
+        active_brush = new_brush
          
 
 
         #Palette colors
-        if context.mode == 'OBJECT':
-            layout3  = self.layout.box()
-            layout3.template_ID(settings_l, "palette", new="palette.new")
-            if settings_l.palette:
-                layout3.template_palette(settings_l, "palette", color=True)
+        # if context.mode == 'OBJECT':
             
+            # layout3  = self.layout.box()
+            # layout3.template_ID(settings_l, "palette", new="palette.new")
+            # if settings_l.palette:
+            #     layout3.template_palette(settings_l, "palette", color=True)
+            # bpy.context.tool_settings.image_paint.palette = None  
 
         layout = self.layout.box()
         
@@ -251,9 +255,12 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         row.prop(lr_tools, "vc_write_to_blue")
 
         column_row = column.row(align=True)
-        column_row.prop(active_brush, 'color', text="")
+        # column_row.prop(active_brush, 'color', text="")
+        column_row.prop(lr_tools, 'lr_vc_swatch', text="")
         
-        rgb_picker = column_row.operator("lr.pick_vertex_color", icon='EYEDROPPER', text="")  
+        rgb_picker = column_row.operator("lr.pick_vertex_color", icon='EYEDROPPER', text="")
+        rgb_picker.pick_rgb_target_property = str(f"bpy.context.scene.lr_tools['lr_vc_swatch']")
+        
         rgb_picker.pick_alpha = False
 
         
@@ -276,17 +283,23 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         operator_prop['set_g'] = lr_tools.vc_write_to_green
         operator_prop['set_b'] = lr_tools.vc_write_to_blue
 
+        # operator_prop['color_r'] = active_brush.color[0]
+        # operator_prop['color_r_int'] = int(round(active_brush.color[0] * 255))
 
-        operator_prop['color_r'] = active_brush.color[0]
-        operator_prop['color_r_int'] = int(round(active_brush.color[0] * 255))
+        # operator_prop['color_g'] = active_brush.color[1]
+        # operator_prop['color_g_int'] = int(round(active_brush.color[1] * 255))
 
-        operator_prop['color_g'] = active_brush.color[1]
-        operator_prop['color_g_int'] = int(round(active_brush.color[1] * 255))
+        # operator_prop['color_b'] = active_brush.color[2]
+        # operator_prop['color_b_int'] = int(round(active_brush.color[2] * 255))
+        if lr_tools.get('lr_vc_swatch'):
+            operator_prop['color_r'] = lr_tools['lr_vc_swatch'][0]
+            operator_prop['color_r_int'] = int(round(lr_tools['lr_vc_swatch'][0] * 255))
 
-        operator_prop['color_b'] = active_brush.color[2]
-        operator_prop['color_b_int'] = int(round(active_brush.color[2] * 255))
+            operator_prop['color_g'] = lr_tools['lr_vc_swatch'][1]
+            operator_prop['color_g_int'] = int(round(lr_tools['lr_vc_swatch'][1] * 255))
 
-
+            operator_prop['color_b'] = lr_tools['lr_vc_swatch'][2]
+            operator_prop['color_b_int'] = int(round(lr_tools['lr_vc_swatch'][2] * 255))
 
 
 
@@ -1045,8 +1058,9 @@ def lr_palette(scene):
 
         #make red active
         pal.colors.active = red
-    ts = bpy.context.tool_settings   
-    ts.image_paint.palette = pal
+
+    bpy.context.tool_settings.vertex_paint.palette = pal
+    # ts.vertex_paint.palette = pal
 
 
 
