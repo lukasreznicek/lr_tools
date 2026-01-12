@@ -197,10 +197,10 @@ class OBJECT_OT_lr_set_obj_info_attr(bpy.types.Operator):
         data_type: FLOAT
         domain: POINT
         store_mode: What to store into attribute
-            pivot: Stored into first decimal place as a value 1 E.g. .1
-            x_axis: Stored into first decimal place as a value 2 E.g. .2
-            y_axis: Stored into first decimal place as a value 3 E.g. .3
-            element_index: Stored as a whole number before decimal point E.g. 46.
+            pivot: Sto
+            x_axis: 
+            y_axis: 
+            element_index: 
 
     '''
     bl_idname = "geometry.lr_set_obj_info_attr"
@@ -535,7 +535,8 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
         @staticmethod
         def position_from_loop_indices(obj,
                                        loop_indicies:list):
-                                       
+            
+
             """
             Calculate the local and global average positions, and the average normal vector from the specified loop indices.
 
@@ -957,10 +958,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 directional_vector_z = directional_vector_from_loop_indices(obj_evaluated,attr_info_ordered[idx]['z_axis_index'],origin_position_local_avg)
 
 
-
-
-
-
                 if self.z_axis_source == "NORMAL":
                     #If only Y and X provided (Take Z from normal)
                         # if directional_vector_z == None and len(attr_info_ordered[idx]['pivot_index']) > 0 and directional_vector_x and directional_vector_y: #If Z isnt provided origin normal is used.
@@ -976,7 +973,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                 if directional_vector_y and directional_vector_z and not directional_vector_x:
                     directional_vector_x = directional_vector_y.cross(directional_vector_z) #Result is right handed coord system
                     print("Calculating X")
-
 
 
                 #If only Y and X provided (Take Z from cross product)
@@ -1007,11 +1003,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
                     rotational_matrix = vec_to_rotational_matrix(orthagonal_xyz_axis[0],orthagonal_xyz_axis[1],orthagonal_xyz_axis[2])
                 else:
                     rotational_matrix = None
-
-
-
-
-
 
 
                 if self.remove_extra: #Remove verticies which belong to pivot point x axis and y axis. 
@@ -1055,7 +1046,6 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
 
 
             # ------------  SELECT ALL, MAKE ID0 ACTIVE AND PARENT  ------------
-
             for idx in attr_info_ordered:
                 if attr_info_ordered[idx]['object']:
                     attr_info_ordered[idx]['object'].select_set(True)
@@ -1079,11 +1069,8 @@ class OBJECT_OT_lr_recover_obj_info(bpy.types.Operator):
             #Remove original object
             for col in obj.users_collection:
                 col.objects.unlink(obj)
-
             bpy.data.objects.remove(obj)
-            
         return {'FINISHED'}
-
 
 
 class OBJECT_OT_lr_attribute_increment_int_values(bpy.types.Operator):
@@ -1116,7 +1103,6 @@ class OBJECT_OT_lr_attribute_increment_int_values(bpy.types.Operator):
                 attribute.vector[0] = index
 
         return {'FINISHED'}
-
 
 
 class OBJECT_OT_lr_uv_offset_by_object(bpy.types.Operator):
@@ -1263,7 +1249,6 @@ class OBJECT_OT_lr_attribute_increment_values_mesh(bpy.types.Operator):
                 element_id +=1
 
             bm.to_mesh(objects_eval[obj_index]['object'].data)
-            bm.free()     
-
+            bm.free()
 
         return {'FINISHED'}

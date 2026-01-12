@@ -23,7 +23,7 @@ bl_info = {
 }
 
 import bpy, os, bmesh, subprocess
-
+import rna_keymap_ui 
 
 from .operators import attributes
 from .operators import set_vertex_color
@@ -37,6 +37,13 @@ from .operators import UCX
 from .operators import uv_misc
 from .operators import mesh_misc
 from .operators import modifiers
+from .operators import shape_keys
+from .operators import naming
+from .operators import scene
+from .operators import object
+from .operators import mesh
+from .operators import window
+from .ui import pie_menus
 
 from bpy.props import IntProperty, CollectionProperty, StringProperty,FloatVectorProperty,BoolProperty
 
@@ -50,10 +57,7 @@ from bl_ui.properties_object import ObjectButtonsPanel #For sub panels
 from bpy.utils import previews # for icons
 
 
-
-#MENUS
-from .menus import pie_menus
-# ------------------------   ICONS   ------------------------
+#region ========== ICONS ==========
 
 def register_icons():
     icons_dir = os.path.join(os.path.dirname(__file__), "icons")
@@ -68,70 +72,58 @@ def register_icons():
 def unregister_icons():
     previews.remove(lr_icons_collection) #Remove custom icons
 
+#endregion
 
 
-
-# ------------------------   PREFERENCES   ------------------------
-
-class AddonPreferences(bpy.types.AddonPreferences):
-    bl_idname = __name__
-
-
-
-    def draw(self, context):
-        # Search for keymap items in the addon's keymap list (addon_keymaps) from within Blender settings and display the menu
-
-        import rna_keymap_ui 
-
-        layout = self.layout
-        box = layout.box()
-        color = box.column()
-        color.label(text="Keymap List:",icon="KEYINGSET")
-
-        wm = bpy.context.window_manager
-        kc = wm.keyconfigs.user
-        old_km_name = ""
-        get_kmi_l = []
-        for km_add, kmi_add in addon_keymaps:
-            for km_con in kc.keymaps:
-                if km_add.name == km_con.name:
-                    km = km_con
-                    break
-
-            for kmi_con in km.keymap_items:
-                if kmi_add.idname == kmi_con.idname:
-                    if kmi_add.name == kmi_con.name:
-                        get_kmi_l.append((km,kmi_con))
-
-        get_kmi_l = sorted(set(get_kmi_l), key=get_kmi_l.index)
-
-        for km, kmi in get_kmi_l:
-            if not km.name == old_km_name:
-                color.label(text=str(km.name),icon="DOT")
-            color.context_pointer_set("keymap", km)
-            rna_keymap_ui.draw_kmi([], kc, km, kmi, color, 0)
-            color.separator()
-            old_km_name = km.name
-
-
-# ------------------------   KEYMAPS   ------------------------
+#region ========== ADDON REGISTER KEYMAPS ==========
 
 addon_keymaps = []
 def register_keymaps():
     wm = bpy.context.window_manager
     kc = wm.keyconfigs.addon
     if kc:
-        
-        # km = kc.keymaps.new(name='UV Editor', space_type= 'EMPTY')
-        # kmi = km.keymap_items.new('uv.lr_unwrap', type= 'X', value='PRESS', shift=True, ctrl=True, alt=False)
-        # addon_keymaps.append((km, kmi))
+
+        # UI
+        km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
+        kmi = km.keymap_items.new(
+            "wm.call_menu_pie",
+            type='Z',
+            value='PRESS',
+            shift=False,
+            ctrl=False,
+            alt=False
+        )
+        kmi.properties.name = pie_menus.VIEW3D_MT_Shading_Ex.bl_idname
+        addon_keymaps.append((km, kmi))
 
 
-        # km = kc.keymaps.new(name='UV Editor', space_type= 'EMPTY')
-        # kmi = km.keymap_items.new('uv.lr_unwrap2', type= 'X', value='PRESS', shift=True, ctrl=True, alt=False)
-        # addon_keymaps.append((km, kmi))
+        km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
+        kmi = km.keymap_items.new(
+            "wm.call_menu_pie",
+            type='S',
+            value='PRESS',
+            shift=False,
+            ctrl=True,
+            alt=False
+        )
+        kmi.properties.name = pie_menus.VIEW3D_MT_LRPieSave.bl_idname
+        addon_keymaps.append((km, kmi))
 
 
+        km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
+        kmi = km.keymap_items.new(
+            "wm.call_menu_pie",
+            type='W',
+            value='PRESS',
+            shift=False,
+            ctrl=False,
+            alt=True
+        )
+        kmi.properties.name = pie_menus.VIEW3D_MT_WindowsPopUp.bl_idname
+        addon_keymaps.append((km, kmi))
+
+
+        # Others
         km = kc.keymaps.new(name='Sculpt', space_type= 'EMPTY')
         kmi = km.keymap_items.new('lr.offset_multires_sculpt_subd', type= 'D', value='PRESS', shift=True, ctrl=False, alt=False)
         kmi.properties.decrease = True
@@ -168,16 +160,58 @@ def register_keymaps():
         kmi.properties.rotate_left = True
         kmi.active = False
         addon_keymaps.append((km, kmi))
-# lr.view_object_rotate
 
 def unregister_keymaps():
-
     for km,kmi in addon_keymaps:
         km.keymap_items.remove(kmi)
     addon_keymaps.clear()
 
+#endregion
 
-# ------------------------   PROPERTIES   ------------------------
+
+#region ========== ADDON PREFERENCES ==========
+
+class AddonPreferences(bpy.types.AddonPreferences):
+    '''Displays all keymaps created above in settings'''
+    bl_idname = __name__
+
+    def draw(self, context):
+        # Search for keymap items in the addon's keymap list (addon_keymaps) from within Blender settings and display the menu
+
+        layout = self.layout
+        box = layout.box()
+        color = box.column()
+        color.label(text="Keymap List:",icon="KEYINGSET")
+
+        wm = bpy.context.window_manager
+        kc = wm.keyconfigs.user
+        old_km_name = ""
+        get_kmi_l = []
+        for km_add, kmi_add in addon_keymaps:
+            for km_con in kc.keymaps:
+                if km_add.name == km_con.name:
+                    km = km_con
+                    break
+
+            for kmi_con in km.keymap_items:
+                if kmi_add.idname == kmi_con.idname:
+                    if kmi_add.name == kmi_con.name:
+                        get_kmi_l.append((km,kmi_con))
+
+        get_kmi_l = sorted(set(get_kmi_l), key=get_kmi_l.index)
+
+        for km, kmi in get_kmi_l:
+            if not km.name == old_km_name:
+                color.label(text=str(km.name),icon="DOT")
+            color.context_pointer_set("keymap", km)
+            rna_keymap_ui.draw_kmi([], kc, km, kmi, color, 0)
+            color.separator()
+            old_km_name = km.name
+
+#endregion
+
+
+#region ========== PROPERTIES ==========
 # To acess properties: bpy.data.scenes['Scene'].lr_tools
 # Is assigned by pointer property below in class registration.
 
@@ -212,7 +246,12 @@ class lr_tool_settings_object(bpy.types.PropertyGroup):
             print(self['lr_object_info_index'])
             # self['lr_object_info_index']=2
             # row.prop(context.object,'lr_object_info_index')
-# ------------------------   UI   ------------------------
+
+
+#endregion
+
+
+#region ========== UI ==========
 
 class VIEW3D_PT_lr_vertex(bpy.types.Panel):
     bl_label = "VERTEX COLOR"
@@ -226,12 +265,11 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         # settings_l = bpy.context.tool_settings.image_paint 
 
 
-        new_brush = bpy.data.brushes.new('VertexSet')       
-        settings_l = bpy.context.tool_settings.vertex_paint  
-        # active_brush = settings_l.brush 
-        active_brush = new_brush
-         
-
+        # new_brush = bpy.data.brushes.new('VertexSet')       
+        # settings_l = bpy.context.tool_settings.vertex_paint  
+        # # active_brush = settings_l.brush 
+        # active_brush = new_brush
+        
 
         #Palette colors
         # if context.mode == 'OBJECT':
@@ -506,7 +544,7 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
         layout.label(text="Naming")
 
         layout.operator("object.lr_name_ucx", text="Name UCX_", icon = 'FILE_TEXT')        
-        
+        layout.operator("lr.name_high_poly_bake", text="Name High Poly / Low Poly", icon = 'FILE_TEXT')
 
         layout = self.layout.box()
         layout.label(text="Cleanup/Check")
@@ -518,16 +556,18 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
 
 
 
-
+        
         # layout = self.layout.box()
         # layout.label(text="Export")
         # layout.operator("object.lr_export_but_one_material", text="With one material", icon='EXPORT')
         # layout.operator("object.lr_exportformask", text="With one material and one specified UVSet", icon='EXPORT')
 
+#endregion
 
 
-
-
+#------------------------------
+# PANELS CLASSES
+#------------------------------
 
 class UI_PT_Panel_UV_Editor(Panel):
     bl_label = 'UV'
@@ -555,10 +595,9 @@ class UI_PT_Panel_UV_Editor(Panel):
         row.scale_y = 1.5
 
 
-
-class VIEW3D_PT_lr_obj_info(bpy.types.Panel):
-    bl_idname = "OBJECT_PT_lr_object_info"
-    bl_label = "OBJECT INFO"
+class VIEW3D_PT_lr_origin_info(bpy.types.Panel):
+    bl_idname = "OBJECT_PT_lr_origin_info"
+    bl_label = "ORIGIN INFO"
     bl_options = {'DEFAULT_CLOSED'}
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -739,6 +778,7 @@ class VIEW3D_PT_lr_select_uv(bpy.types.Panel):
         row.operator("object.lr_uv_index_name", text="Set UV Name: ", icon = 'PASTEDOWN')
         row.prop(lr_tools, "name_to_uv_index_set",icon_only=True)
 
+
 class VIEW3D_PT_lr_delete_modifier(bpy.types.Panel):
     bl_label = "LR Edit"
     bl_idname = "OBJECT_PT_lr_delete_modifier"
@@ -757,7 +797,6 @@ class VIEW3D_PT_lr_delete_modifier(bpy.types.Panel):
 
         # row = layout.row()
         # row.prop(context.scene, "modifier_name")
-
 
 
 class VIEW3D_PT_lr_move_uv(bpy.types.Panel):
@@ -856,7 +895,33 @@ class VIEW3D_PT_lr_add_remove_uv(bpy.types.Panel):
         c_row = col.row(align=True)
         c_row.operator("object.lr_remove_uv_by_name", text="Remove:", icon ='REMOVE')
         c_row.prop(lr_tools, "uv_map_delete_by_name",icon_only=True)
-        
+
+def draw_mesh_cut_in_menu(self, context):
+    layout = self.layout
+    layout.operator(object.OBJECT_OT_lr_MeshCut.bl_idname, icon="SCULPTMODE_HLT")
+#----------------------------------------
+# PANEL APPEND - BLENDER MENU
+#----------------------------------------
+
+def scene_pt_unit(self,context):
+    layout = self.layout
+    layout.separator()
+    layout.operator(scene.SCENE_OT_lr_set_scene_scale_to_meters.bl_idname)
+
+def topbar_mt_file(self, context):
+    layout = self.layout
+    layout.operator(OPN_OT_open_folder.bl_idname)
+    layout.operator(OPN_OT_open_config.bl_idname)
+ 
+def object_menu_select_curve_bevel(self, context):
+    obj = context.active_object
+    if obj and obj.type == 'CURVE' and obj.data.bevel_object is not None:
+        self.layout.operator(object.OBJECT_OT_select_bevel_object.bl_idname,
+                         text="LR: Select Bevel Object")
+
+#----------------------------------------
+# OPERATORS ???
+#----------------------------------------
 
 class OPN_OT_open_folder(Operator):
     """Opens Current Folder"""
@@ -871,8 +936,6 @@ class OPN_OT_open_folder(Operator):
         full_path = bpy.path.abspath("//")
         subprocess.Popen('explorer "{0}"'.format(full_path))
         return {'FINISHED'}
-
-
 
 class OPN_OT_open_config(Operator):
     """Opens Config Folder"""
@@ -889,18 +952,10 @@ class OPN_OT_open_config(Operator):
         subprocess.Popen('explorer "{0}"'.format(full_path))
         return {'FINISHED'}
 
-def menu_func(self, context):
-    self.layout.operator(OPN_OT_open_folder.bl_idname)
-    self.layout.operator(OPN_OT_open_config.bl_idname)
- 
+
 
 #UI End ---------------------------------------------------------------------------------
 classes = (
-            
-            #Pie Menus
-            # pie_menus.OBJECT_OT_snap_preset_vertex,
-            # pie_menus.VIEW3D_MT_PIE_snapping_presets,
-
             AddonPreferences,
             lr_tool_settings_object,
             lr_tool_settings,
@@ -917,6 +972,8 @@ classes = (
             
 
             replace_children.lr_replace_children,
+            
+            #UCX
             UCX.hideUCX,
             UCX.nameUCX,
             UCX.unhideUCX,
@@ -957,7 +1014,6 @@ classes = (
             select.lr_select_obj_by_topology,
             select.lr_deselect_duplicate,
             
-            
             #PANELS
             DATA_PT_lr_attribute_extend,
             VIEW3D_PT_lr_vertex,
@@ -969,11 +1025,12 @@ classes = (
             UI_PT_Panel_UV_Editor,
             
             VIEW3D_PT_lr_object,
-            VIEW3D_PT_lr_obj_info,
+            VIEW3D_PT_lr_origin_info,
             object_drop.OBJECT_OT_lr_drop_object,
-            #Pie Menus
+            
 
-            #UVs
+            #Naming
+            naming.lr_name_high_poly_bake,
             
             #Attributes
             attributes.OBJECT_OT_lr_add_attribute,
@@ -988,9 +1045,30 @@ classes = (
 
             #Modifiers
             VIEW3D_PT_lr_delete_modifier,
-            modifiers.OBJECT_OT_delete_modifier
+            modifiers.OBJECT_OT_delete_modifier,
             
-            #Menus
+            shape_keys.OBJECT_OT_SwitchShapeKeyOnMultipleObjects,
+
+            #Scene
+            scene.SCENE_OT_lr_set_scene_scale_to_meters,
+
+            #Object
+            object.OBJECT_OT_lr_origin_to_selection,
+            object.OBJECT_OT_lr_MeshCut,
+            object.OBJECT_OT_lr_select_children_on_selected_objects,
+            object.OBJECT_OT_lr_select_root_parent,
+            object.OBJECT_OT_select_bevel_object,
+            #Mesh 
+            mesh.MESH_OT_lr_sculpt_selected,
+
+            #Window
+            window.WM_OT_ToggleTabletAPI,
+
+            #Pie Menus
+            pie_menus.VIEW3D_MT_Shading_Ex,
+            pie_menus.WM_OT_NewEditorWindow,
+            pie_menus.VIEW3D_MT_WindowsPopUp,
+            pie_menus.VIEW3D_MT_LRPieSave
         )
  
 
@@ -1070,25 +1148,34 @@ def register():
 
     #needs handlers to get scene acess, othervise not working
     bpy.app.handlers.load_post.append(lr_palette)
-    bpy.types.TOPBAR_MT_file.append(menu_func) #For opening filepath in explorer
 
+    #Register operators
     for cls in classes:
         bpy.utils.register_class(cls)
-    # To acess properties: bpy.data.scenes['Scene'].lr_tools
+    
+    #Append to existing menus
+    bpy.types.TOPBAR_MT_file.append(topbar_mt_file)
+    bpy.types.SCENE_PT_unit.append(scene_pt_unit)
+    bpy.types.VIEW3D_MT_object_context_menu.append(draw_mesh_cut_in_menu)
+    bpy.types.VIEW3D_MT_object_context_menu.append(object_menu_select_curve_bevel)
+
+    #Create panels
     bpy.types.Scene.lr_tools_object = bpy.props.PointerProperty(type=lr_tool_settings_object)
     bpy.types.Scene.lr_tools = bpy.props.PointerProperty(type=lr_tool_settings)
 
-    
-    
     register_keymaps()
 
 
 def unregister():
     bpy.app.handlers.load_post.remove(lr_palette)
-    bpy.types.TOPBAR_MT_file.remove(menu_func) #For opening filepath in explorer
+    bpy.types.SCENE_PT_unit.remove(scene_pt_unit)
+    bpy.types.TOPBAR_MT_file.remove(topbar_mt_file)
+    bpy.types.VIEW3D_MT_object_context_menu.remove(draw_mesh_cut_in_menu)
+    bpy.types.VIEW3D_MT_object_context_menu.remove(object_menu_select_curve_bevel)
 
     for cls in classes:
         bpy.utils.unregister_class(cls)
+
     del bpy.types.Scene.lr_tools
 
     unregister_icons()

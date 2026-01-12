@@ -598,10 +598,9 @@ class LR_Tools_OT_UVCopyPaste(bpy.types.Operator):
 
 			bm = bmesh.from_edit_mesh(obj.data)
 
-
-
 			# if  uv_index_destination > uv_layer_amount:
 			# 	return {'FINISHED'}
+
 			while uv_index_destination > len(bm.loops.layers.uv)-1:
 				bm.loops.layers.uv.new('UVMap')
 

@@ -450,10 +450,6 @@ class OBJECT_OT_lr_remove_checker(bpy.types.Operator):
 
         return {'FINISHED'}
 
-
-
-
-
 #Slow Disabled
 class OBJECT_OT_join_selection_and_parent(bpy.types.Operator):
     """For each selected object parent object is checked and meged with selection. Select only child, parent object is detected in script. Handles children reparenting"""

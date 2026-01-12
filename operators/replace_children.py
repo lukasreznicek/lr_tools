@@ -2,7 +2,7 @@ import bpy
 from bpy.props import BoolProperty
 
 class lr_replace_children(bpy.types.Operator):
-    """Replaces children on inactive objects from active object"""
+    """Replaces children on inactive objects from active object.\n Will basically transfer the hierarchy of the active object to the inactive selected objects.\n\nUseful for replacing low poly objects with high poly objects while keeping the same hierarchy."""
     bl_idname = "object.lr_replace_children"
     bl_label = "Replace children"
     bl_options = {'REGISTER', 'UNDO'}
