@@ -12,6 +12,7 @@ from bpy.types import Operator
 # Bottom Left
 # Bottom Right
 
+
 # ------------------------------------------------------------------------
 # PIE MENU: Shading Ex
 # ------------------------------------------------------------------------
@@ -25,17 +26,12 @@ class VIEW3D_MT_Shading_Ex(Menu):
         overlay = context.space_data.overlay
 
         # LEFT: Wireframe
-        op = pie.operator("wm.context_set_enum",
-            icon='SHADING_WIRE',
-            text="Wireframe",
-            depress=(shading.type == 'WIREFRAME'))
+        op = pie.operator("wm.context_set_enum",icon='SHADING_WIRE', text="Wireframe", depress=(shading.type == 'WIREFRAME'))
         op.data_path = "space_data.shading.type"
         op.value = 'WIREFRAME'
+
         # RIGHT: Solid
-        op = pie.operator("wm.context_set_enum",
-            text="Solid",
-            icon="SHADING_SOLID",
-            depress=(shading.type == 'SOLID'))
+        op = pie.operator("wm.context_set_enum", text="Solid", icon="SHADING_SOLID", depress=(shading.type == 'SOLID'))
         op.data_path = "space_data.shading.type"
         op.value = 'SOLID'
 
@@ -44,38 +40,27 @@ class VIEW3D_MT_Shading_Ex(Menu):
 
         # TOP: Toggle Overlays
         overlay_visible = getattr(overlay, "show_overlays", False)
-        op = pie.operator("wm.context_toggle",
-            text="Toggle Overlays",
-            icon='OVERLAY',
-            depress=overlay_visible)
+        op = pie.operator("wm.context_toggle", text="Toggle Overlays", icon='OVERLAY', depress=overlay_visible)
         op.data_path = "space_data.overlay.show_overlays"
 
         # TOP LEFT: Material Preview
-        op = pie.operator("wm.context_set_enum",
-            text="Material Preview",
-            icon="MATERIAL",
-            depress=(shading.type == 'MATERIAL'))
+        op = pie.operator("wm.context_set_enum", text="Material Preview", icon="MATERIAL", depress=(shading.type == 'MATERIAL'))
         op.data_path = "space_data.shading.type"
         op.value = 'MATERIAL'
 
         # TOP RIGHT: Rendered
-        op = pie.operator("wm.context_set_enum",
-            text="Rendered",
-            icon="SHADING_RENDERED",
-            depress=(shading.type == 'RENDERED'))
+        op = pie.operator("wm.context_set_enum", text="Rendered", icon="SHADING_RENDERED", depress=(shading.type == 'RENDERED'))
         op.data_path = "space_data.shading.type"
         op.value = 'RENDERED'
         
         # BOTTOM LEFT
         # pie.operator("mesh.lr_sculpt_selected", text="Sculpt Selected", icon='SCULPTMODE_HLT')
-        col = pie.column()                     # Create sublayout
-        box = col.box()                        # Draw a framed box
-        box.scale_x = 1                      # Slightly larger
+        col = pie.column()                      # Create sublayout
+        box = col.box()                         # Draw a framed box
+        box.scale_x = 1                         # Slightly larger
         box.scale_y = 1.3
         # box.alert = True                       # 🔴 Make it red-tinted (Blender’s "alert" state)
-        box.operator("mesh.lr_sculpt_selected",
-                     text="Sculpt Selected",  # Add emoji / uppercase to stand out
-                     icon='SCULPTMODE_HLT')
+        box.operator("mesh.lr_sculpt_selected", text="Sculpt Selected", icon='SCULPTMODE_HLT')
         
         # pie.separator()
 
@@ -91,8 +76,72 @@ class VIEW3D_MT_Shading_Ex(Menu):
         pie.prop(shading, "show_wire", text="Show Wireframe", icon='MOD_WIREFRAME')
 
 
+# >>> bpy.context.window_manager.keyconfigs.addon.keymaps['
+#                                                          3D View']
+#                                                          3D View Tool: Edit Mesh, Box Carve']
+#                                                          3D View Tool: Edit Mesh, Circle Carve']
+#                                                          3D View Tool: Edit Mesh, Polyline Carve']
+#                                                          3D View Tool: Edit Mesh, Zen UV Transform']
+#                                                          3D View Tool: Object, Box Carve']
+#                                                          3D View Tool: Object, Circle Carve']
+#                                                          3D View Tool: Object, Polyline Carve']
+#                                                          Asset Browser Main']
+#                                                          Curve']
+#                                                          Image']
+#                                                          Image Editor Tool: Uv, Zen UV Touch']
+#                                                          Image Editor Tool: Uv, Zen UV Transform']
+#                                                          Mesh']
+#                                                          Node Editor']
+#                                                          Object Mode']
+#                                                          Pose']
+#                                                          Property Editor']
+#                                                          Screen']
+#                                                          Screen Editing']
+#                                                          Sculpt']
+#                                                          UV Editor']
+#                                                          Window']
+# ------------------------------------------------------------------------
+# PIE MENU: Select Mode Pie
+# ------------------------------------------------------------------------
+class VIEW3D_MT_Select_Ops_Pie(Menu):
+    bl_idname = "VIEW3D_MT_Select_Mode_Pie"
+    bl_label = "Select Mode Pie"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+
+        # LEFT: Wireframe
+        op = pie.operator("mesh.select_edge_ring_multi", text = "Ring Select")
+        # pie.separator()
+
+        # RIGHT: Solid
+        # pie.separator()
+        op = pie.operator("mesh.select_edge_loop_multi", text = "Loop Select")
+
+        # BOTTOM: Toggle X-Ray
+        pie.separator()
+
+        # TOP: Toggle Overlays
+        # pie.separator()
+        op = pie.operator("mesh.select_all", text="Select All")
+        op.action = 'SELECT'
 
 
+        # TOP LEFT: Material Preview
+        pie.operator("mesh.region_to_loop", text="Region Loop")
+
+        # TOP RIGHT: Rendered
+        pie.separator()
+        
+        # BOTTOM LEFT
+        pie.separator()
+
+        # BOTTOM RIGHT: Wireframe Overlay
+        pie.operator("mesh.faces_select_linked_flat", text="Linked Flat")
+
+#pie.separator()
+#bpy.ops.mesh.faces_select_linked_flat()
+#bpy.ops.mesh.region_to_loop()
 
 # ------------------------------------------------------------------------
 # OPERATOR: New Editor Window

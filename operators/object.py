@@ -285,3 +285,56 @@ class OBJECT_OT_select_bevel_object(bpy.types.Operator):
         context.view_layer.objects.active = bevel_object
 
         return {'FINISHED'}
+    
+
+    class OBJECT_OT_setup_uv_mask(bpy.types.Operator):
+        """Creates and validates a 'UVMask' uv map and packs it"""
+        bl_idname = "object.setup_uvmask"
+        bl_label = "LR: Setup UV Mask"
+        bl_options = {'REGISTER', 'UNDO'}
+
+        # @classmethod
+        # def poll(cls, context):
+        #     obj = context.active_object
+        #     return obj and obj.type == 'CURVE' and obj.data.bevel_object is not None
+
+        def execute(self, context):
+            
+            #Preprocess
+            process_objects = list(bpy.context.selected_objects)
+
+            for obj in list(process_objects):
+                if obj.name.startswith("UCX_"):
+                    process_objects.remove(obj)
+                if obj.type !="MESH":
+                    process_objects.remove(obj)
+
+
+
+            for obj in process_objects:
+
+                if obj.type == 'MESH':
+                    uvmap_name = "UVMask"
+                    uvmaps = obj.data.uv_layers
+                    if uvmap_name in uvmaps:
+                        uvmaps.remove(uvmaps[uvmap_name])
+                    
+                    uvmaps.active = uvmaps['UVMap'] if 'UVMap' in uvmaps else uvmaps[0]
+                    uvmap = uvmaps.new(name=uvmap_name)
+
+                    # Set the UV map as active
+                    uvmaps.active = uvmap
+
+            bpy.ops.object.make_single_user(object=True, obdata=True, material=False, animation=False, obdata_animation=False)
+
+            for obj in process_objects: 
+                obj.select_set(True)    
+            bpy.context.view_layer.objects.active = process_objects[0]
+            # Pack UVs into 0-1 space
+            bpy.ops.object.mode_set(mode='EDIT')
+            bpy.ops.uv.select_all(action='SELECT')
+            bpy.ops.uv.pack_islands(rotate=False, margin=0.001)
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+
+            return {'FINISHED'}

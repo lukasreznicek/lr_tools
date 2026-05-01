@@ -1,6 +1,55 @@
 import bpy, bmesh
 from mathutils import Matrix, Vector
 
+# class MESH_OT_lr_sculpt_selectedOld(bpy.types.Operator):
+#     """Sculpt Selected"""
+#     bl_idname = "mesh.lr_sculpt_selected"
+#     bl_label = "Sculpt Selected"
+#     bl_options = {'REGISTER', 'UNDO'}  # enables Undo and display in the operator panel
+
+#     def execute(self, context):
+#         # Your main logic goes here
+#         active_object = context.active_object
+#         sel_mode = context.tool_settings.mesh_select_mode
+
+#         if context.mode == 'EDIT_MESH':
+#             if sel_mode[2]: #Faces
+#                 # bm = bmesh.from_edit_mesh(active_object.data)
+#                 # store_face_sel = [f.index for f in bm.faces if f.select]
+                
+#                 #bpy.ops.mesh.select_more()
+#                 bpy.ops.mesh.reveal(select=False)
+#                 bpy.ops.mesh.hide(unselected=False)
+#                 bpy.ops.object.mode_set(mode='SCULPT')
+
+#                 bpy.ops.paint.mask_flood_fill(mode='VALUE', value=0)
+#                 bpy.ops.paint.visibility_invert()
+#                 bpy.ops.paint.mask_flood_fill(mode='VALUE', value=1)
+
+#                 bpy.ops.paint.hide_show_all(action='SHOW')
+#                 bpy.ops.paint.mask_flood_fill(mode='INVERT')
+
+#             if sel_mode[0] or sel_mode[1]: #Verts                
+#                 if sel_mode[1]:
+#                     sel_mode[0] = True
+#                     sel_mode[1] = False
+                
+#                 bpy.ops.mesh.reveal(select=False)
+#                 bpy.ops.mesh.hide(unselected=False)
+#                 bpy.ops.object.mode_set(mode='SCULPT')
+#                 bpy.ops.paint.visibility_invert()
+#                 bpy.ops.paint.mask_flood_fill(mode='VALUE', value=0)
+#                 bpy.ops.paint.visibility_invert()
+#                 bpy.ops.paint.mask_flood_fill(mode='VALUE', value=1)
+#                 bpy.ops.paint.hide_show_all(action='SHOW')
+
+#                 bpy.ops.object.mode_set(mode='OBJECT')
+#                 bpy.ops.object.mode_set(mode='SCULPT')
+
+#         self.report({'INFO'}, "Done")
+#         return {'FINISHED'}
+    
+
 class MESH_OT_lr_sculpt_selected(bpy.types.Operator):
     """Sculpt Selected"""
     bl_idname = "mesh.lr_sculpt_selected"
@@ -35,20 +84,20 @@ class MESH_OT_lr_sculpt_selected(bpy.types.Operator):
                     sel_mode[1] = False
                 
                 bpy.ops.mesh.reveal(select=False)
-                bpy.ops.mesh.hide(unselected=False)
                 bpy.ops.object.mode_set(mode='SCULPT')
-                bpy.ops.paint.visibility_invert()
                 bpy.ops.paint.mask_flood_fill(mode='VALUE', value=0)
-                bpy.ops.paint.visibility_invert()
-                bpy.ops.paint.mask_flood_fill(mode='VALUE', value=1)
-                bpy.ops.paint.hide_show_all(action='SHOW')
-
-                bpy.ops.object.mode_set(mode='OBJECT')
-                bpy.ops.object.mode_set(mode='SCULPT')
-
+                bpy.ops.object.mode_set(mode='EDIT')
+                # bpy.context.tool_settings.mesh_select_mode = (True, False, False)
+                bpy.ops.mesh.hide('EXEC_DEFAULT', unselected=False)
+                bpy.ops.object.mode_set('EXEC_DEFAULT', mode='SCULPT')
+                bpy.ops.paint.mask_flood_fill('EXEC_DEFAULT', mode='VALUE', value=1.0)
+                bpy.ops.object.mode_set('EXEC_DEFAULT', mode='EDIT')
+                bpy.ops.mesh.reveal('EXEC_DEFAULT')
+                bpy.ops.object.mode_set('EXEC_DEFAULT', mode='SCULPT')
         self.report({'INFO'}, "Done")
         return {'FINISHED'}
-    
+
+
 '''
 
 def get_right_and_up_axes(context, mx):

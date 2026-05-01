@@ -70,6 +70,82 @@ def test():
         print(f"Dot Products - X: {dot_x}, Y: {dot_y}, Z: {dot_z}")
 
 
+# Your bounding box function (unchanged)
+def get_selected_uv_bounds(obj):
+    if obj.mode != 'EDIT':
+        raise RuntimeError("Object must be in Edit Mode")
+    
+    bm = bmesh.from_edit_mesh(obj.data)
+    uv_layer = bm.loops.layers.uv.active
+    if uv_layer is None:
+        raise RuntimeError("No active UV map")
+        
+    u_min = v_min = float('inf')
+    u_max = v_max = float('-inf')
+    found = False
+
+    for face in bm.faces:
+        for loop in face.loops:
+            if not loop.uv_select_vert:
+                continue
+            u, v = loop[uv_layer].uv
+            u_min = min(u_min, u)
+            v_min = min(v_min, v)
+            u_max = max(u_max, u)
+            v_max = max(v_max, v)
+            found = True
+
+    if not found:
+        return None
+    bm.free()
+    del bm
+    return (u_min, v_min), (u_max, v_max)
+
+
+
+
+
+
+def get_selected_uv_bounds(obj):
+    """
+    Returns the (min_uv, max_uv) of selected UVs in Edit Mode for the active UV map.
+    
+    Args:
+        obj: bpy.types.Object, must be a mesh in Edit Mode
+    
+    Returns:
+        ((u_min, v_min), (u_max, v_max)) or None if no UVs are selected
+    """
+    if obj.mode != 'EDIT':
+        raise RuntimeError("Object must be in Edit Mode")
+    
+    bm = bmesh.from_edit_mesh(obj.data)
+    uv_layer = bm.loops.layers.uv.active
+    if uv_layer is None:
+        raise RuntimeError("No active UV map")
+        
+    u_min = v_min = float('inf')
+    u_max = v_max = float('-inf')
+    found = False
+
+    for face in bm.faces:
+        for loop in face.loops:
+            if loop.uv_select_vert == False:
+                continue
+            u, v = loop[uv_layer].uv
+            print(u,v)
+            u_min = min(u_min, u)
+            v_min = min(v_min, v)
+            u_max = max(u_max, u)
+            v_max = max(v_max, v)
+            found = True
+
+    if not found:
+        return None
+    
+    return (u_min, v_min), (u_max, v_max)
+
+
 
 def get_view_orientation() -> ((bool,bool,bool),bool):
     '''

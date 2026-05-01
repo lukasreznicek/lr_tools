@@ -73,11 +73,16 @@ class lr_multires_sculpt_offset(bpy.types.Operator):
             if modifier.type == 'MULTIRES':
                 has_modifier = True
                 if self.decrease:
-                    modifier.sculpt_levels = max(0, modifier.sculpt_levels - 1)
+
+                    if modifier.sculpt_levels > 0:                  
+                        modifier.sculpt_levels = max(0, modifier.sculpt_levels - 1)
                 else:  
-                    modifier.sculpt_levels += 1
+                    if modifier.sculpt_levels < modifier.total_levels:
+                        modifier.sculpt_levels += 1
 
         if not has_modifier:
             active_obj.modifiers.new("Multires","MULTIRES")
 
         return {'FINISHED'}
+    
+

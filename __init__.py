@@ -22,7 +22,7 @@ bl_info = {
     "category" : "UV"
 }
 
-import bpy, os, bmesh, subprocess
+import bpy, os, bmesh, subprocess, pathlib
 import rna_keymap_ui 
 
 from .operators import attributes
@@ -74,7 +74,6 @@ def unregister_icons():
 
 #endregion
 
-
 #region ========== ADDON REGISTER KEYMAPS ==========
 
 addon_keymaps = []
@@ -83,7 +82,7 @@ def register_keymaps():
     kc = wm.keyconfigs.addon
     if kc:
 
-        # UI
+        # Pie Menu - Snapping Presets
         km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
         kmi = km.keymap_items.new(
             "wm.call_menu_pie",
@@ -96,7 +95,25 @@ def register_keymaps():
         kmi.properties.name = pie_menus.VIEW3D_MT_Shading_Ex.bl_idname
         addon_keymaps.append((km, kmi))
 
+        # Pie Menu - Select
+        km = kc.keymaps.get('Mesh')
+        if km is None:
+            km = kc.keymaps.new(name='Mesh', space_type='VIEW_3D')
 
+        # km = kc.keymaps.new(name='Mesh', space_type='VIEW_3D')
+        kmi = km.keymap_items.new(
+            "wm.call_menu_pie",
+            type='A',
+            value='PRESS',
+            shift=False,
+            ctrl=False,
+            alt=False
+        )
+        kmi.properties.name = pie_menus.VIEW3D_MT_Select_Ops_Pie.bl_idname
+        addon_keymaps.append((km, kmi))
+
+
+        # Pie Menu - LRPieSave
         km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
         kmi = km.keymap_items.new(
             "wm.call_menu_pie",
@@ -109,7 +126,7 @@ def register_keymaps():
         kmi.properties.name = pie_menus.VIEW3D_MT_LRPieSave.bl_idname
         addon_keymaps.append((km, kmi))
 
-
+        # Pie Menu - Windows PopUp
         km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
         kmi = km.keymap_items.new(
             "wm.call_menu_pie",
@@ -123,38 +140,42 @@ def register_keymaps():
         addon_keymaps.append((km, kmi))
 
 
-        # Others
+        # Pie Menu - Multires offset Decrease
         km = kc.keymaps.new(name='Sculpt', space_type= 'EMPTY')
         kmi = km.keymap_items.new('lr.offset_multires_sculpt_subd', type= 'D', value='PRESS', shift=True, ctrl=False, alt=False)
         kmi.properties.decrease = True
-        kmi.active = False
+        kmi.active = True
         addon_keymaps.append((km, kmi))
         
+        # Pie Menu - Multires offset Increase
         km = kc.keymaps.new(name='Sculpt', space_type= 'EMPTY')
         kmi = km.keymap_items.new('lr.offset_multires_sculpt_subd', type= 'D', value='PRESS', shift=False, ctrl=False, alt=False)
         kmi.properties.decrease = False
-        kmi.active = False
+        kmi.active = True
         addon_keymaps.append((km, kmi))
 
-
+        # View rotation - Left
         km = kc.keymaps.new(name='3D View', space_type= 'VIEW_3D')
         kmi = km.keymap_items.new('lr.view_object_rotate', type= 'TWO', value='PRESS', shift=True, ctrl=False, alt=False)
         kmi.properties.rotate_left = False
         kmi.active = False
         addon_keymaps.append((km, kmi))
 
+        # View rotation - Right
         km = kc.keymaps.new(name='3D View', space_type= 'VIEW_3D')
         kmi = km.keymap_items.new('lr.view_object_rotate', type= 'ONE', value='PRESS', shift=True, ctrl=False, alt=False)
         kmi.properties.rotate_left = True
         kmi.active = False
         addon_keymaps.append((km, kmi))
 
+        # View rotation - Left - Image Editor
         km = kc.keymaps.new(name='Image', space_type= 'IMAGE_EDITOR')
         kmi = km.keymap_items.new('lr.view_object_rotate', type= 'TWO', value='PRESS', shift=True, ctrl=False, alt=False)
         kmi.properties.rotate_left = False
         kmi.active = False
         addon_keymaps.append((km, kmi))
 
+        # View rotation - Right - Image Editor
         km = kc.keymaps.new(name='Image', space_type= 'IMAGE_EDITOR')
         kmi = km.keymap_items.new('lr.view_object_rotate', type= 'ONE', value='PRESS', shift=True, ctrl=False, alt=False)
         kmi.properties.rotate_left = True
@@ -236,6 +257,7 @@ class lr_tool_settings(bpy.types.PropertyGroup):
 
     uv_copy_paste_destination: bpy.props.IntProperty(name="Destination Index", description="Paste UVs destination index", default=2, min = 1, soft_max = 7) # type: ignore
 
+
 class lr_tool_settings_object(bpy.types.PropertyGroup):
     lr_object_info_index: bpy.props.IntProperty(default=0)# type: ignore
     
@@ -253,6 +275,15 @@ class lr_tool_settings_object(bpy.types.PropertyGroup):
 
 #region ========== UI ==========
 
+
+
+        # row =   layout.row(align=True)
+        # else:
+        #     layout = self.layout
+        #     row =   layout.row(align=True)
+        #     row.label(text='Script Folder Empty')
+        #     op = row.operator("wm.lr_open_folder", text="", icon='FILE_FOLDER')
+        #     op.subfolder = "scripts"
 class VIEW3D_PT_lr_vertex(bpy.types.Panel):
     bl_label = "VERTEX COLOR"
     bl_idname = "OBJECT_PT_lr_vertex"
@@ -896,13 +927,30 @@ class VIEW3D_PT_lr_add_remove_uv(bpy.types.Panel):
         c_row.operator("object.lr_remove_uv_by_name", text="Remove:", icon ='REMOVE')
         c_row.prop(lr_tools, "uv_map_delete_by_name",icon_only=True)
 
-def draw_mesh_cut_in_menu(self, context):
-    layout = self.layout
-    layout.operator(object.OBJECT_OT_lr_MeshCut.bl_idname, icon="SCULPTMODE_HLT")
+
+# -----
+# Menus
+# -----
+
+class VIEW3D_MT_LR_Menu(bpy.types.Menu):
+    bl_label = "LR Tools"
+    bl_idname = "VIEW3D_MT_LR_Menu"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("lr.name_high_poly_bake", text="Name High Poly / Low Poly", icon = 'FILE_TEXT')
+        layout.operator(object.OBJECT_OT_lr_MeshCut.bl_idname, icon="SCULPTMODE_HLT")
+
+def add_to_object_context_menu(self, context):
+    if context.mode == 'OBJECT':
+        layout = self.layout
+        layout.separator()
+        layout.menu("VIEW3D_MT_LR_Menu", text="LR Tools:", icon='MODIFIER_ON')
+
+
 #----------------------------------------
 # PANEL APPEND - BLENDER MENU
 #----------------------------------------
-
 def scene_pt_unit(self,context):
     layout = self.layout
     layout.separator()
@@ -994,7 +1042,9 @@ classes = (
             uv_misc.lr_grid_redistribute_uv_islands,
             uv_misc.LR_Tools_OT_UVCopyPaste,
             uv_misc.LR_TOOLS_OT_uv_offset_by_object_id,
-
+            uv_misc.UV_OT_scale_from_corner,
+            uv_misc.UV_OT_snap_to_corner,
+            
             mesh_misc.OBJECT_OT_material_slot_remove_unused_on_selected,
             mesh_misc.MESH_OT_getEdgesLength,
             mesh_misc.LR_OT_view_object_rotate,
@@ -1028,7 +1078,6 @@ classes = (
             VIEW3D_PT_lr_origin_info,
             object_drop.OBJECT_OT_lr_drop_object,
             
-
             #Naming
             naming.lr_name_high_poly_bake,
             
@@ -1064,11 +1113,15 @@ classes = (
             #Window
             window.WM_OT_ToggleTabletAPI,
 
+
             #Pie Menus
             pie_menus.VIEW3D_MT_Shading_Ex,
             pie_menus.WM_OT_NewEditorWindow,
             pie_menus.VIEW3D_MT_WindowsPopUp,
-            pie_menus.VIEW3D_MT_LRPieSave
+            pie_menus.VIEW3D_MT_LRPieSave,
+            pie_menus.VIEW3D_MT_Select_Ops_Pie
+
+            
         )
  
 
@@ -1156,8 +1209,16 @@ def register():
     #Append to existing menus
     bpy.types.TOPBAR_MT_file.append(topbar_mt_file)
     bpy.types.SCENE_PT_unit.append(scene_pt_unit)
-    bpy.types.VIEW3D_MT_object_context_menu.append(draw_mesh_cut_in_menu)
+    # bpy.types.VIEW3D_MT_object_context_menu.append(draw_mesh_cut_in_menu)
     bpy.types.VIEW3D_MT_object_context_menu.append(object_menu_select_curve_bevel)
+
+    # bpy.utils.register_class(VIEW3D_MT_LR_Menu)
+    # Create Menu
+    if not hasattr(bpy.types, "VIEW3D_MT_LR_Menu"):
+        bpy.utils.register_class(VIEW3D_MT_LR_Menu)
+
+
+    bpy.types.VIEW3D_MT_object_context_menu.append(add_to_object_context_menu)
 
     #Create panels
     bpy.types.Scene.lr_tools_object = bpy.props.PointerProperty(type=lr_tool_settings_object)
@@ -1170,8 +1231,12 @@ def unregister():
     bpy.app.handlers.load_post.remove(lr_palette)
     bpy.types.SCENE_PT_unit.remove(scene_pt_unit)
     bpy.types.TOPBAR_MT_file.remove(topbar_mt_file)
-    bpy.types.VIEW3D_MT_object_context_menu.remove(draw_mesh_cut_in_menu)
+    # bpy.types.VIEW3D_MT_object_context_menu.remove(draw_mesh_cut_in_menu)
     bpy.types.VIEW3D_MT_object_context_menu.remove(object_menu_select_curve_bevel)
+
+    bpy.types.VIEW3D_MT_object_context_menu.remove(add_to_object_context_menu)
+    bpy.utils.unregister_class(VIEW3D_MT_LR_Menu)
+
 
     for cls in classes:
         bpy.utils.unregister_class(cls)

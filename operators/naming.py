@@ -6,12 +6,11 @@ class lr_name_high_poly_bake(bpy.types.Operator):
     bl_label = "Copy Active Name to Inactive"
     bl_options = {'REGISTER', 'UNDO'}
 
+    @classmethod
+    def poll(cls, context):
+        return context.mode == 'OBJECT'
+
     def execute(self, context):
-        #check if active object is mesh
-        if context.mode != 'OBJECT':
-            self.report({'WARNING'}, "Object mode is required.")
-            return {'CANCELLED'}
-        
 
         active_obj = context.active_object
         if active_obj is None or active_obj.type != 'MESH':
@@ -60,12 +59,12 @@ class lr_name_high_poly_bake(bpy.types.Operator):
 
         if has_suffix == False:
             if multiple_inactive == False:
-                inactive_objs[0].name = active_obj.name + "_hp"
-                active_obj.name = active_obj.name + "_lp"
+                inactive_objs[0].name = active_obj.name + "_high"
+                active_obj.name = active_obj.name + "_low"
             else:
                 for idx, obj in enumerate(inactive_objs):
-                    obj.name=inactive_objs[idx].name = active_obj.name+f"_hp_{idx:02d}"
-                active_obj.name = active_obj.name + "_lp"
+                    obj.name=inactive_objs[idx].name = active_obj.name+f"_high_{idx:02d}"
+                active_obj.name = active_obj.name + "_low"
 
         return {'FINISHED'}
 

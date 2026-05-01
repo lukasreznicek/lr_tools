@@ -1,4 +1,4 @@
-import bpy
+import bpy,pathlib, subprocess
 
 class WM_OT_ToggleTabletAPI(bpy.types.Operator):
     bl_idname = "wm.lr_toggle_tablet_api"
@@ -11,6 +11,10 @@ class WM_OT_ToggleTabletAPI(bpy.types.Operator):
         bpy.ops.wm.save_userpref()
         self.report({'INFO'}, f"Tablet API now: {prefs.tablet_api}")
         return {'FINISHED'}
+
+
+
+
 
 # def register():
 #     bpy.utils.register_class(ToggleTabletAPI)
