@@ -299,7 +299,6 @@ class VIEW3D_MT_LRPieSave(Menu):
         op.use_selection = True
         op.add_leaf_bones = False
 
-
         # Top Left
         pie.separator()
         # Top Right
@@ -307,12 +306,11 @@ class VIEW3D_MT_LRPieSave(Menu):
         # Bottom Left
         pie.operator("wm.read_homefile", text="New File", icon='FILE_NEW')
         # pie.separator()
+        
         # Bottom Right
-
         if "lr_exporter_export" in dir(bpy.ops.object):
             op = pie.operator("object.lr_exporter_export", text="Exporter", icon='EXPORT')
             op.export_hidden=True
-            op.export_for_mask=False
         else:
             pie.separator()
 

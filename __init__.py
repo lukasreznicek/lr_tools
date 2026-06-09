@@ -938,6 +938,7 @@ class VIEW3D_MT_LR_Menu(bpy.types.Menu):
 
     def draw(self, context):
         layout = self.layout
+        pass
         layout.operator("lr.name_high_poly_bake", text="Name High Poly / Low Poly", icon = 'FILE_TEXT')
         layout.operator(object.OBJECT_OT_lr_MeshCut.bl_idname, icon="SCULPTMODE_HLT")
 
@@ -1212,12 +1213,8 @@ def register():
     # bpy.types.VIEW3D_MT_object_context_menu.append(draw_mesh_cut_in_menu)
     bpy.types.VIEW3D_MT_object_context_menu.append(object_menu_select_curve_bevel)
 
-    # bpy.utils.register_class(VIEW3D_MT_LR_Menu)
     # Create Menu
-    if not hasattr(bpy.types, "VIEW3D_MT_LR_Menu"):
-        bpy.utils.register_class(VIEW3D_MT_LR_Menu)
-
-
+    bpy.utils.register_class(VIEW3D_MT_LR_Menu)
     bpy.types.VIEW3D_MT_object_context_menu.append(add_to_object_context_menu)
 
     #Create panels
