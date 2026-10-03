@@ -1,5 +1,11 @@
-import bpy, bmesh
-from mathutils import Matrix, Vector
+import bpy, bmesh, os, re, time
+from mathutils import Vector, Matrix
+from ..utils import lr_functions
+from collections import defaultdict
+from collections import OrderedDict
+from .. import config
+
+
 
 # class MESH_OT_lr_sculpt_selectedOld(bpy.types.Operator):
 #     """Sculpt Selected"""
@@ -441,3 +447,45 @@ class MESH_OT_AlignEditMesh(bpy.types.Operator):
         mx = context.active_object.matrix_world if self.space == 'LOCAL' else context.scene.cursor.matrix if self.space == 'CURSOR' else Matrix()
         return mx
 '''
+
+
+class MESH_OT_getEdgesLength(bpy.types.Operator):
+    bl_idname = "mesh.lr_get_edges_length"
+    bl_label = "Outputs length of selected edges"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    edges_length: bpy.props.FloatProperty(name="Length: ",unit='LENGTH',precision=5)
+    
+    def execute(self, context):
+
+        #Execute only if selection is mesh
+        if len(bpy.context.selected_objects) != 0:
+            if bpy.context.active_object.type == 'MESH':      
+                
+                
+                bm = bmesh.from_edit_mesh(bpy.context.active_object.data)
+
+                def sel_edges_length(bm):
+                    length: float = 0
+                    for edge in bm.edges:
+                        if edge.select == True:
+                            length += edge.calc_length()
+                    return length
+
+                #Default is meters
+                length = sel_edges_length(bm)
+
+
+                self.edges_length = length
+
+        else:
+            self.report({'ERROR'}, "Select object.")
+            return {'FINISHED'}
+
+
+        #self.report({'INFO'}, "Length: " + str(length))
+        return {'FINISHED'}	    
+
+
+
+

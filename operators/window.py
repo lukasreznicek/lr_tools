@@ -1,4 +1,7 @@
 import bpy,pathlib, subprocess
+from bpy.types import Operator
+
+
 
 class WM_OT_ToggleTabletAPI(bpy.types.Operator):
     bl_idname = "wm.lr_toggle_tablet_api"
@@ -24,3 +27,36 @@ class WM_OT_ToggleTabletAPI(bpy.types.Operator):
 
 # if __name__ == "__main__":
 #     register()
+
+
+class OPN_OT_open_folder(Operator):
+    """Opens Current Folder"""
+    bl_idname = "window.open_path"
+    bl_label = "Open Current .blend Path"
+    bl_description = "Opens Current .blend Path"
+    bl_space_type =  "Window"
+    bl_region_type = "UI"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        full_path = bpy.path.abspath("//")
+        subprocess.Popen('explorer "{0}"'.format(full_path))
+        return {'FINISHED'}
+
+class OPN_OT_open_config(Operator):
+    """Opens Config Folder"""
+    bl_idname = "window.open_config_path"
+    bl_label = "Open Startup Path"
+    bl_description = "Opens Current .blend Config Path"
+    bl_space_type =  "Window"
+    bl_region_type = "UI"
+    bl_options = {'REGISTER', 'UNDO'}
+    
+    def execute(self, context):
+        # full_path = bpy.path.abspath("//")
+        full_path = bpy.utils.user_resource('CONFIG')
+        subprocess.Popen('explorer "{0}"'.format(full_path))
+        return {'FINISHED'}
+
+
+
