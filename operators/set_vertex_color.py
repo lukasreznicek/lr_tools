@@ -1,4 +1,6 @@
-import bpy
+﻿import bpy
+import bmesh
+import bmesh
 
 
 
@@ -316,82 +318,84 @@ class lr_offset_vertex_color(bpy.types.Operator):
         return {'FINISHED'}
 
 
-
-
 class lr_pick_vertex_color(bpy.types.Operator):
-    """Pick vertex color from active polygon"""
+    """Pick vertex color from the active vertex, edge or face (depends on select mode)"""
     bl_idname = "lr.pick_vertex_color"
     bl_label = "Pick vertex color or alpha"
     bl_options = {'REGISTER', 'UNDO'}
 
-    
     @classmethod
     def poll(cls, context):
-        return bpy.context.tool_settings.mesh_select_mode[2]   
-    
-    #property
-    pick_alpha: bpy.props.BoolProperty(name = 'Pick Alpha', description='Outputs alpha', default = False) #type: ignore
-    pick_rgb_target_property: bpy.props.StringProperty(name= 'Target Property', description='', default="") #type: ignore
+        obj = context.object
+        return obj is not None and obj.type == 'MESH' and obj.mode == 'EDIT'
+
+    pick_alpha: bpy.props.BoolProperty(name='Pick Alpha', description='Outputs alpha', default=False)  # type: ignore
 
     def execute(self, context):
-        
-        active_object = bpy.context.object
-        mode_store = active_object.mode
-        bpy.ops.object.mode_set(mode='OBJECT')
-
-        color_attributes = []
-        #Get color attributes
-        for attr in active_object.data.attributes:  
-            if attr.data_type == 'FLOAT_COLOR' or attr.data_type == 'BYTE_COLOR':
-                color_attributes.append(attr)
-        
-        #Create new attr if not present
-        if len(color_attributes) == 0:
-            active_object.data.attributes.new('VertexColor', 'FLOAT_COLOR', 'CORNER')
-
-        #Get active Color Attribute. Might be replaced by ordinary attribute by Blender later on.
-        active_color_attr = active_object.data.attributes.active_color  #active_color vs active. Latter is attribute
-        
-        if active_color_attr == None:
+        me = context.object.data
+        # In edit mode the attribute struct is stale (empty name/type), so use the name only.
+        name = me.color_attributes.active_color_name
+        if not name:
             self.report({'WARNING'}, "Select Color Attribute.")
-            return {'FINISHED'}
-        
-        if active_color_attr.domain != 'CORNER':
-            self.report({'WARNING'}, "Convert Color Attribute from Vertex to Face Corner.")
-            return {'FINISHED'}
+            return {'CANCELLED'}
 
-        active_polygon = active_object.data.polygons[active_object.data.polygons.active]
+        bm = bmesh.from_edit_mesh(me)
 
-        loop_indices = [i for i in active_polygon.loop_indices]
+        # Active element from selection history; fall back to active face.
+        active = bm.select_history.active
+        if active is None:
+            active = bm.faces.active
+        if active is None:
+            self.report({'WARNING'}, "No active vertex, edge or face.")
+            return {'CANCELLED'}
 
-        #collect colors
-        colors = [active_color_attr.data[i].color for i in loop_indices]
+        if isinstance(active, bmesh.types.BMFace):
+            verts = None
+            loops = list(active.loops)
+        elif isinstance(active, bmesh.types.BMEdge):
+            verts = list(active.verts)
+            loops = [l for v in verts for l in v.link_loops]
+        else:
+            verts = [active]
+            loops = list(active.link_loops)
 
-        r = g = b = a = 0
-        
-        for color in colors:
-            r += color[0]
-            g += color[1]            
-            b += color[2]
-            a += color[3]
-        r /= active_polygon.loop_total
-        g /= active_polygon.loop_total
-        b /= active_polygon.loop_total
-        a /= active_polygon.loop_total
+        def find_layer(layers):
+            for coll in (layers.float_color, layers.color):
+                layer = coll.get(name)
+                if layer is not None:
+                    return layer
+            return None
 
-        if self.pick_alpha == False:
-            if self.pick_rgb_target_property == "":
-                return {'FINISHED'}
-            target = eval(self.pick_rgb_target_property)
-            target[0] = r
-            target[1] = g
-            target[2] = b
+        colors = []
+        layer = find_layer(bm.loops.layers)
+        if layer is not None:
+            colors = [l[layer] for l in loops]
+        else:
+            layer = find_layer(bm.verts.layers)
+            if layer is not None:
+                vs = verts if verts is not None else list(active.verts)
+                colors = [v[layer] for v in vs]
 
-        if self.pick_alpha == True:
-            bpy.context.scene.lr_tools.lr_vc_alpha_swatch = a
+        if layer is None:
+            self.report({'WARNING'}, f"No BMesh color layer found for '{name}'.")
+            return {'CANCELLED'}
+        if not colors:
+            self.report({'WARNING'}, "Active element has no face corners (loose vertex or edge).")
+            return {'CANCELLED'}
 
+        n = len(colors)
+        r, g, b, a = (sum(c[i] for c in colors) / n for i in range(4))
 
+        if self.pick_alpha:
+            context.scene.lr_tools.lr_vc_alpha_swatch = a
+        else:
+            context.scene.lr_tools.lr_vc_swatch = (r, g, b)
 
-        bpy.ops.object.mode_set(mode=mode_store)
+        if any(max(abs(c[i] - colors[0][i]) for i in range(4)) > 1e-4 for c in colors):
+            self.report({'INFO'}, "Corners have different colors; picked the average.")
 
         return {'FINISHED'}
+
+
+
+

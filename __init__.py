@@ -43,6 +43,7 @@ from .operators import scene
 from .operators import object
 from .operators import mesh
 from .operators import window
+from .operators import view3d
 from .ui import pie_menus
 
 from bpy.props import IntProperty, CollectionProperty, StringProperty,FloatVectorProperty,BoolProperty
@@ -123,8 +124,24 @@ def register_keymaps():
             ctrl=True,
             alt=False
         )
+
         kmi.properties.name = pie_menus.VIEW3D_MT_LRPieSave.bl_idname
         addon_keymaps.append((km, kmi))
+
+
+        # Pie Menu - Origin menu.
+        km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
+        kmi = km.keymap_items.new(
+            "wm.call_menu_pie",
+            type='S',
+            value='PRESS',
+            shift=True,
+            ctrl=False,
+            alt=False
+        )
+        kmi.properties.name = pie_menus.VIEW3D_MT_3DCursor.bl_idname
+        addon_keymaps.append((km, kmi))
+
 
         # Pie Menu - Windows PopUp
         km = kc.keymaps.new(name='3D View', space_type='VIEW_3D')
@@ -328,8 +345,6 @@ class VIEW3D_PT_lr_vertex(bpy.types.Panel):
         column_row.prop(lr_tools, 'lr_vc_swatch', text="")
         
         rgb_picker = column_row.operator("lr.pick_vertex_color", icon='EYEDROPPER', text="")
-        rgb_picker.pick_rgb_target_property = str(f"bpy.context.scene.lr_tools['lr_vc_swatch']")
-        
         rgb_picker.pick_alpha = False
 
         
@@ -574,7 +589,8 @@ class VIEW3D_PT_lr_object(bpy.types.Panel):
         layout = self.layout.box()
         layout.label(text="Naming")
 
-        layout.operator("object.lr_name_ucx", text="Name UCX_", icon = 'FILE_TEXT')        
+        layout.operator("object.lr_name_ucx", text="Name UCX_", icon = 'FILE_TEXT')   
+        layout.operator("object.lr_select_obj_collisions", text="Select Object Collisions", icon = 'FILE_TEXT')     
         layout.operator("lr.name_high_poly_bake", text="Name High Poly / Low Poly", icon = 'FILE_TEXT')
 
         layout = self.layout.box()
@@ -1024,7 +1040,8 @@ classes = (
             
             #UCX
             UCX.hideUCX,
-            UCX.nameUCX,
+            UCX.OBJECT_OT_selectObjectCollisions,
+            UCX.OBJECT_OT_NameUCX,
             UCX.unhideUCX,
             UCX.hide_unhide_lattice,
                         
@@ -1114,13 +1131,16 @@ classes = (
             #Window
             window.WM_OT_ToggleTabletAPI,
 
-
+            #View3D
+            view3d.VIEW3D_OT_snap_cursor_to_active,
+            # view3d.VIEW3D_OT_cursor_grab,
             #Pie Menus
             pie_menus.VIEW3D_MT_Shading_Ex,
             pie_menus.WM_OT_NewEditorWindow,
             pie_menus.VIEW3D_MT_WindowsPopUp,
             pie_menus.VIEW3D_MT_LRPieSave,
-            pie_menus.VIEW3D_MT_Select_Ops_Pie
+            pie_menus.VIEW3D_MT_Select_Ops_Pie,
+            pie_menus.VIEW3D_MT_3DCursor
 
             
         )

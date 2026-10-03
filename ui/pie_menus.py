@@ -1,6 +1,7 @@
 import bpy
 from bpy.types import Menu
 from bpy.types import Operator
+# from operators import view3d
 
         
 # Left
@@ -195,6 +196,42 @@ class VIEW3D_MT_WindowsPopUp(Menu):
         pie = self.layout.menu_pie()
 
         # Left
+        op = pie.operator("mesh.mark_seams", text="Select All")
+        op.clear = True
+        # Right
+        op = pie.operator("mesh.mark_seams", text="Select All")
+        op.clear = False
+        pie.operator("wm.new_editor_window", text="UV Editor", icon='IMAGE').editor_type = 'IMAGE_EDITOR'
+        
+        # Bottom
+        pie.operator("wm.new_editor_window", text="Shader Editor", icon='MATSHADERBALL').editor_type = 'NODE_SHADER'
+        # Top
+        pie.operator("mesh.region_to_loop", text="Select Boundary Loop", icon='GEOMETRY_NODES').editor_type = 'NODE_GEOMETRY'
+        
+        # Top Left
+        op = pie.operator("mesh.mark_sharp", text="Unmark Sharp", icon='ASSET_MANAGER').editor_type = 'ASSETS'
+        op.clear = True
+
+        # Top Right
+        op = pie.operator("mesh.mark_sharp", text="Unmark Sharp", icon='ASSET_MANAGER').editor_type = 'ASSETS'
+        op.clear = False
+
+        # Bottom Left
+        pie.separator()
+        # Bottom Right
+        pie.separator()
+    
+# ------------------------------------------------------------------------
+# PIE MENU: Edge Operators
+# ------------------------------------------------------------------------
+class VIEW3D_MT_WindowsPopUp(Menu):
+    bl_idname = "VIEW3D_MT_WindowsPopUp"
+    bl_label = "WindowsPopUp"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+
+        # Left
         pie.operator("wm.new_editor_window", text="3D View", icon='VIEW3D').editor_type = 'VIEW_3D'
         # Right
         pie.operator("wm.new_editor_window", text="UV Editor", icon='IMAGE').editor_type = 'IMAGE_EDITOR'
@@ -212,6 +249,42 @@ class VIEW3D_MT_WindowsPopUp(Menu):
         pie.operator("screen.area_join", text="Area Join", icon='AREA_DOCK')
     
 
+# ------------------------------------------------------------------------
+# PIE MENU: 3D Cursor
+# ------------------------------------------------------------------------
+class VIEW3D_MT_3DCursor(Menu):
+    bl_idname = "VIEW3D_MT_3DCursor"
+    bl_label = "3D Cursor"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+
+        # Left
+        pie.separator()
+
+        # Right
+        pie.separator()
+
+        # Bottom
+        # pie.separator()
+        pie.operator("view3d.lr_snap_cursor_to_active", text="Snap Cursor to Active", icon='CURSOR')
+
+        # Top
+        op = pie.operator("view3d.snap_selected_to_cursor", text="Snap Selected to Cursor", icon='CURSOR')
+        op.use_offset = False
+
+        # Top Left
+        pie.separator()
+
+        # Top Right
+        pie.separator()
+
+        # Bottom Left
+        pie.separator()
+
+        # Bottom Right
+        pie.separator()
+    
 
 
 # ------------------------------------------------------------------------
