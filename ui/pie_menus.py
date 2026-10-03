@@ -684,3 +684,448 @@ class VIEW3D_MT_LRPieSave(Menu):
 #         keymap_list.clear()
 
 #     bpy.utils.unregister_class(DynamicPieClass)
+
+
+# ========================================================================
+# Recreated from Pie Menu Editor
+# ========================================================================
+
+# ------------------------------------------------------------------------
+# OPERATORS
+# ------------------------------------------------------------------------
+class LR_OT_PieSnapPreset(Operator):
+    bl_idname = "lr.pie_snap_preset"
+    bl_label = "Snap Preset"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    preset: bpy.props.EnumProperty(
+        items=[
+            ('NORMAL', "Normal", ""),
+            ('GRID_ABS', "Grid Abs", ""),
+            ('GRID_REL', "Grid Rel", ""),
+            ('VERTEX', "Vertex", ""),
+            ('FACE', "Face", ""),
+            ('RETOPO', "Retopology", ""),
+        ],
+        default='VERTEX',
+    )
+
+    def execute(self, context):
+        ts = context.scene.tool_settings
+        # Only the retopology preset turns snapping on; all others turn it off
+        ts.use_snap = (self.preset == 'RETOPO')
+        if self.preset == 'RETOPO':
+            try:
+                ts.snap_elements = {'FACE', 'FACE_NEAREST'}
+            except TypeError:
+                ts.snap_elements = {'FACE_PROJECT', 'FACE_NEAREST'}
+            ts.snap_target = 'ACTIVE'
+            ts.use_snap_align_rotation = False
+        elif self.preset in {'NORMAL', 'FACE'}:
+            ts.snap_elements = {'FACE'}
+            ts.snap_target = 'ACTIVE'
+            ts.use_snap_align_rotation = (self.preset == 'NORMAL')
+        elif self.preset == 'VERTEX':
+            ts.snap_elements = {'VERTEX'}
+            ts.snap_target = 'ACTIVE'
+            ts.use_snap_align_rotation = False
+        else:
+            ts.snap_elements = {'INCREMENT'}
+            ts.use_snap_grid_absolute = (self.preset == 'GRID_ABS')
+        return {'FINISHED'}
+
+
+class LR_OT_PieViewSelectedObjectMode(Operator):
+    bl_idname = "lr.pie_view_selected_object_mode"
+    bl_label = "View Selected in Object Mode"
+    bl_description = "Switch to object mode, frame the selection and return to edit mode"
+
+    def execute(self, context):
+        bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.view3d.view_selected(use_all_regions=False)
+        bpy.ops.object.mode_set(mode='EDIT')
+        return {'FINISHED'}
+
+
+class LR_OT_PieTexelDensity(Operator):
+    bl_idname = "lr.pie_texel_density_10_24"
+    bl_label = "Set 10.24 on 2k"
+    bl_description = "Set texel density 10.24 for a 2048 texture (Texel Density Checker addon)"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        if not hasattr(bpy.ops.object, "texel_density_preset_set"):
+            self.report({'WARNING'}, "Texel Density Checker addon is not enabled")
+            return {'CANCELLED'}
+        context.scene.td.texture_size = "2048"
+        bpy.ops.object.texel_density_preset_set(td_value="10.24")
+        return {'FINISHED'}
+
+
+class LR_OT_PieZenFitToTrim(Operator):
+    bl_idname = "lr.pie_zenuv_fit_to_trim"
+    bl_label = "Set Active Trim and Fit"
+    bl_description = "Pick the trim under the mouse and fit selection to it (Zen UV addon)"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        if not hasattr(bpy.ops.uv, "zenuv_fit_to_trim"):
+            self.report({'WARNING'}, "Zen UV addon is not enabled")
+            return {'CANCELLED'}
+        bpy.ops.uv.zenuv_set_active_trim_mouseover('INVOKE_DEFAULT')
+        bpy.ops.uv.zenuv_fit_to_trim(
+            op_align_to='lc', op_order='ONE_BY_ONE', fit_mode='TO_TRIM_T',
+            op_fit_axis='V', op_padding=0.0)
+        return {'FINISHED'}
+
+
+class LR_OT_PieZenTrimOverlay(Operator):
+    bl_idname = "lr.pie_zenuv_trim_overlay"
+    bl_label = "Trim Overlay"
+    bl_description = "Show trims in the UV editor (Zen UV addon)"
+
+    def execute(self, context):
+        try:
+            context.scene.zen_uv.ui.uv_tool.display_trims = True
+        except AttributeError:
+            self.report({'WARNING'}, "Zen UV addon is not enabled")
+            return {'CANCELLED'}
+        return {'FINISHED'}
+
+
+class LR_OT_PieWireOverlay(Operator):
+    bl_idname = "lr.pie_wire_overlay"
+    bl_label = "Set Wireframe Overlay"
+
+    state: bpy.props.BoolProperty(default=True)
+
+    def execute(self, context):
+        context.space_data.overlay.show_wireframes = self.state
+        return {'FINISHED'}
+
+
+# ------------------------------------------------------------------------
+# POPUP MENUS (used by the pies below)
+# ------------------------------------------------------------------------
+class VIEW3D_MT_LRPopupMerge(Menu):
+    bl_idname = "VIEW3D_MT_LRPopupMerge"
+    bl_label = "Merge"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("mesh.merge", text="Collapse").type = 'COLLAPSE'
+        layout.operator("mesh.remove_doubles", text="Merge: Distance")
+
+
+class VIEW3D_MT_LRPopupMeshUtils(Menu):
+    bl_idname = "VIEW3D_MT_LRPopupMeshUtils"
+    bl_label = "Mesh Utils"
+
+    def draw(self, context):
+        layout = self.layout
+        ts = context.scene.tool_settings
+        layout.prop(ts, "use_transform_correct_face_attributes", text="UV Preserve", icon='TEXTURE_DATA', toggle=True)
+        layout.prop(ts, "use_mesh_automerge", text="Automerge", icon='AUTOMERGE_OFF', toggle=True)
+
+
+class VIEW3D_MT_LRPopupExport(Menu):
+    bl_idname = "VIEW3D_MT_LRPopupExport"
+    bl_label = "Export"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("autoreload.reload", text="Reload Images", icon='FILE_REFRESH').behavior = 'images'
+        layout.separator()
+        op = layout.operator("object.lr_exporter_export", text="Export Selected", icon='EXPORT')
+        op.export_hidden = True
+        op = layout.operator("object.lr_exporter_export", text="Export for mask", icon='EXPORT')
+        op.export_for_mask = True
+
+
+class VIEW3D_MT_LRPopupObjectConversion(Menu):
+    bl_idname = "VIEW3D_MT_LRPopupObjectConversion"
+    bl_label = "Object Conversion"
+
+    def draw(self, context):
+        layout = self.layout
+        layout.operator("object.convert", text="To Mesh").target = 'MESH'
+        op = layout.operator("object.make_single_user", text="Single User")
+        op.object = True
+        op.obdata = True
+        op.material = False
+        op.animation = False
+
+
+class VIEW3D_MT_LRPopupHide(Menu):
+    bl_idname = "VIEW3D_MT_LRPopupHide"
+    bl_label = "Hide"
+
+    def draw(self, context):
+        layout = self.layout
+        for label, name in (("HP", "_HP"), ("LP", "_LP"), ("UCX", "UCX_"), ("CAGE", "_cage")):
+            row = layout.row()
+            op = row.operator("object.lr_hide_object", text=label, icon='HIDE_OFF')
+            op.name = name
+            op.hide = False
+            op = row.operator("object.lr_hide_object", text=label, icon='HIDE_ON')
+            op.name = name
+            op.hide = True
+        row = layout.row()
+        row.operator("object.lr_hide_wire_object", text="Wire", icon='HIDE_OFF').hide_wire = False
+        row.operator("object.lr_hide_wire_object", text="Wire", icon='HIDE_ON').hide_wire = True
+
+
+# ------------------------------------------------------------------------
+# PIE MENU: Mesh Edit
+# ------------------------------------------------------------------------
+class VIEW3D_MT_LRPieMeshEdit(Menu):
+    bl_idname = "VIEW3D_MT_LRPieMeshEdit"
+    bl_label = "Mesh Edit"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+        has_looptools = hasattr(bpy.ops.mesh, "looptools_circle")
+
+        # Left
+        if has_looptools:
+            op = pie.operator("mesh.looptools_circle", text="Circle", icon='MESH_CIRCLE')
+            op.custom_radius = False
+            op.fit = 'best'
+            op.flatten = True
+            op.influence = 100
+            op.radius = 1
+            op.regular = True
+        else:
+            pie.separator()
+        # Right
+        pie.menu("VIEW3D_MT_LRPopupMerge", text="Merge")
+        # Bottom
+        if has_looptools:
+            op = pie.operator("mesh.looptools_space", text="Space")
+            op.influence = 100
+            op.input = 'selected'
+            op.interpolation = 'cubic'
+        else:
+            pie.separator()
+        # Top
+        if has_looptools:
+            op = pie.operator("mesh.looptools_curve", text="Curve")
+            op.boundaries = True
+            op.influence = 100
+            op.interpolation = 'cubic'
+            op.regular = False
+            op.restriction = 'none'
+        else:
+            pie.separator()
+        # Top Left
+        if has_looptools:
+            op = pie.operator("mesh.looptools_flatten", text="Flatten")
+            op.influence = 100
+            op.plane = 'best_fit'
+            op.restriction = 'none'
+        else:
+            pie.separator()
+        # Top Right
+        pie.operator("lr.pie_texel_density_10_24", text="Set TD 10.24")
+        # Bottom Left
+        pie.operator("mesh.subdivide", text="Subdivide", icon='MESH_GRID')
+        # Bottom Right
+        if hasattr(bpy.ops.mesh, "set_edge_flow"):
+            op = pie.operator("mesh.set_edge_flow", text="Set Edge Flow", icon='RNDCURVE')
+            op.tension = 180
+            op.iterations = 1
+        else:
+            pie.separator()
+
+
+# ------------------------------------------------------------------------
+# PIE MENU: Curve Edit
+# ------------------------------------------------------------------------
+class VIEW3D_MT_LRPieCurveEdit(Menu):
+    bl_idname = "VIEW3D_MT_LRPieCurveEdit"
+    bl_label = "Curve Edit"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+        pie.separator()                                                 # Left
+        pie.operator("curve.select_next", text="Select Next")           # Right
+        pie.separator()                                                 # Bottom
+        pie.operator("curve.select_linked", text="Select Linked All")   # Top
+        pie.separator()                                                 # Top Left
+        pie.operator("curve.subdivide", text="Subdivide")               # Top Right
+        pie.separator()                                                 # Bottom Left
+        pie.operator("curve.select_previous", text="Select Previous")   # Bottom Right
+
+
+# ------------------------------------------------------------------------
+# PIE MENU: Mesh Utils
+# ------------------------------------------------------------------------
+class VIEW3D_MT_LRPieMeshUtils(Menu):
+    bl_idname = "VIEW3D_MT_LRPieMeshUtils"
+    bl_label = "Mesh Utils"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+        # Left
+        pie.operator("mesh.mark_seam", text="Unmark Seam", icon='EDGESEL').clear = True
+        # Right
+        pie.operator("mesh.mark_seam", text="Mark Seam", icon='EDGE_SEAM').clear = False
+        # Bottom
+        pie.menu("VIEW3D_MT_LRPopupMeshUtils", text="Mesh Utils Menu")
+        # Top
+        pie.operator("mesh.region_to_loop", text="Select Boundary Loop", icon='SELECT_SET')
+        # Top Left
+        pie.operator("mesh.mark_sharp", text="Unmark Sharp", icon='SPHERECURVE').clear = True
+        # Top Right
+        pie.operator("mesh.mark_sharp", text="Mark Sharp", icon='LINCURVE')
+        # Bottom Left
+        pie.operator("mesh.lr_sculpt_selected", text="Sculpt Selected", icon='SCULPTMODE_HLT')
+        # Bottom Right
+        pie.operator("mesh.faces_select_linked_flat", text="Select Linked Flat Faces", icon='UV_FACESEL')
+
+
+# ------------------------------------------------------------------------
+# PIE MENU: Object Utils
+# ------------------------------------------------------------------------
+class VIEW3D_MT_LRPieObjectUtils(Menu):
+    bl_idname = "VIEW3D_MT_LRPieObjectUtils"
+    bl_label = "Object Utils"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+        # Left
+        pie.prop(context.space_data.overlay, "show_face_orientation", text="Face Orientation", toggle=True)
+        # Right
+        pie.menu("VIEW3D_MT_LRPopupObjectConversion", text="Make Single User")
+        # Bottom
+        pie.menu("VIEW3D_MT_LRPopupExport", text="Export")
+        # Top
+        pie.prop(context.scene.tool_settings, "use_transform_skip_children", text="Transform Parents",
+                 icon='OBJECT_ORIGIN', toggle=True)
+        # Top Left
+        pie.operator("object.modifier_add", text="Weighted Normals", icon='MOD_NORMALEDIT').type = 'WEIGHTED_NORMAL'
+        # Top Right
+        op = pie.operator("object.transform_apply", text="Apply Transformation inc. instances", icon='FREEZE')
+        op.location = False
+        op.rotation = True
+        op.scale = True
+        op.isolate_users = True
+        # Bottom Left
+        pie.operator("object.lr_select_root_parent", text="Select: Root Parent", icon='SORT_DESC')
+        # Bottom Right
+        pie.operator("object.lr_select_children_on_selected_objects", text="Select: Add Children", icon='SORT_ASC')
+
+
+# ------------------------------------------------------------------------
+# PIE MENU: Snap Preset
+# ------------------------------------------------------------------------
+class VIEW3D_MT_LRPieSnapPreset(Menu):
+    bl_idname = "VIEW3D_MT_LRPieSnapPreset"
+    bl_label = "Snap Preset"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+        pie.operator("lr.pie_snap_preset", text="Normal", icon='ORIENTATION_NORMAL').preset = 'NORMAL'      # Left
+        pie.operator("lr.pie_snap_preset", text="Grid Abs", icon='SNAP_GRID').preset = 'GRID_ABS'           # Right
+        pie.separator()                                                                                      # Bottom
+        pie.operator("lr.pie_snap_preset", text="Vertex", icon='SNAP_VERTEX').preset = 'VERTEX'             # Top
+        pie.operator("lr.pie_snap_preset", text="Retopology", icon='MOD_MESHDEFORM').preset = 'RETOPO'      # Top Left
+        pie.operator("lr.pie_snap_preset", text="Face", icon='SNAP_FACE').preset = 'FACE'                   # Top Right
+        pie.separator()                                                                                      # Bottom Left
+        pie.operator("lr.pie_snap_preset", text="Grid Rel", icon='SNAP_GRID').preset = 'GRID_REL'           # Bottom Right
+
+
+# ------------------------------------------------------------------------
+# PIE MENU: View Selected / Hide
+# ------------------------------------------------------------------------
+class VIEW3D_MT_LRPieViewSelected(Menu):
+    bl_idname = "VIEW3D_MT_LRPieViewSelected"
+    bl_label = "View Selected"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+        # Left
+        pie.operator("lr.pie_wire_overlay", text="Wire Off").state = False
+        # Right
+        pie.operator("lr.pie_wire_overlay", text="Wire On").state = True
+        # Bottom
+        pie.menu("VIEW3D_MT_LRPopupHide", text="Hide")
+        # Top
+        pie.operator("object.lr_unhide_ucx", text="Unhide all UCX objects")
+        # Top Left
+        pie.operator("object.lr_remove_checker", text="Remove Checker", icon='MESH_PLANE')
+        # Top Right
+        pie.operator("object.lr_assign_checker", text="Assign Checker", icon='TEXTURE')
+        # Bottom Left
+        op = pie.operator("object.lr_hide_subd_modifier", text="Hide SubD")
+        op.hide_subsurf = True
+        op.hide_subsurf_active = False
+        # Bottom Right
+        op = pie.operator("object.lr_hide_subd_modifier", text="Show SubD")
+        op.hide_subsurf = False
+        op.hide_subsurf_active = False
+
+
+# ------------------------------------------------------------------------
+# PIE MENU: UV Pie
+# ------------------------------------------------------------------------
+class IMAGE_MT_LRPieUV(Menu):
+    bl_idname = "IMAGE_MT_LRPieUV"
+    bl_label = "UV Pie"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+        # Left
+        pie.operator("uv.mark_seam", text="Clear Seam", icon='EDGESEL').clear = True
+        # Right
+        pie.operator("uv.mark_seam", text="Mark Seam", icon='EDGE_SEAM').clear = False
+        # Bottom
+        pie.separator()
+        # Top
+        pie.operator("lr.pie_zenuv_fit_to_trim", text="Set Active Trim", icon='EYEDROPPER')
+        # Top Left
+        pie.operator("lr.pie_zenuv_trim_overlay", text="Trim Overlay", icon='OVERLAY')
+        # Top Right
+        pie.operator("lr.pie_texel_density_10_24", text="Set 10.24 on 2k", icon='TEXTURE')
+        # Bottom Left
+        pie.separator()
+        # Bottom Right
+        pie.operator("uv.average_islands_scale", text="Average Islands Scale")
+
+
+# ------------------------------------------------------------------------
+# PIE MENU: UV Align
+# ------------------------------------------------------------------------
+class IMAGE_MT_LRPieUVAlign(Menu):
+    bl_idname = "IMAGE_MT_LRPieUVAlign"
+    bl_label = "UV Align"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+        pie.separator()  # Left
+        pie.separator()  # Right
+        pie.separator()  # Bottom
+        pie.separator()  # Top
+        pie.operator("uv.lr_snap_to_corner", text="Align TopLeft").corner = 'TOP_LEFT'
+        pie.operator("uv.lr_snap_to_corner", text="Align TopRight").corner = 'TOP_RIGHT'
+        pie.operator("uv.lr_snap_to_corner", text="Align BottomLeft").corner = 'BOTTOM_LEFT'
+        pie.operator("uv.lr_snap_to_corner", text="Align BottomRight").corner = 'BOTTOM_RIGHT'
+
+
+# ------------------------------------------------------------------------
+# PIE MENU: UV Scale
+# ------------------------------------------------------------------------
+class IMAGE_MT_LRPieUVScale(Menu):
+    bl_idname = "IMAGE_MT_LRPieUVScale"
+    bl_label = "UV Scale"
+
+    def draw(self, context):
+        pie = self.layout.menu_pie()
+        pie.separator()  # Left
+        pie.separator()  # Right
+        pie.separator()  # Bottom
+        pie.separator()  # Top
+        pie.operator("uv.lr_scale_from_corner", text="Scale TopLeft").corner = 'TOP_LEFT'
+        pie.operator("uv.lr_scale_from_corner", text="Scale TopRight").corner = 'TOP_RIGHT'
+        pie.operator("uv.lr_scale_from_corner", text="Scale BottomLeft").corner = 'BOTTOM_LEFT'
+        pie.operator("uv.lr_scale_from_corner", text="Scale BottomRight").corner = 'BOTTOM_RIGHT'
