@@ -341,23 +341,21 @@ class lr_pick_vertex_color(bpy.types.Operator):
 
         bm = bmesh.from_edit_mesh(me)
 
-        # Active element from selection history; fall back to active face.
-        active = bm.select_history.active
-        if active is None:
-            active = bm.faces.active
-        if active is None:
-            self.report({'WARNING'}, "No active vertex, edge or face.")
-            return {'CANCELLED'}
-
-        if isinstance(active, bmesh.types.BMFace):
-            verts = None
-            loops = list(active.loops)
-        elif isinstance(active, bmesh.types.BMEdge):
-            verts = list(active.verts)
-            loops = [l for v in verts for l in v.link_loops]
+        # Face mode averages selected faces' corners; vertex/edge mode averages all corners of selected vertices.
+        if context.tool_settings.mesh_select_mode[2]:
+            faces = [f for f in bm.faces if f.select]
+            if not faces:
+                active = bm.faces.active
+                faces = [active] if active else []
+            verts = list({v for f in faces for v in f.verts})
+            loops = [l for f in faces for l in f.loops]
         else:
-            verts = [active]
-            loops = list(active.link_loops)
+            verts = [v for v in bm.verts if v.select]
+            loops = [l for v in verts for l in v.link_loops]
+
+        if not verts:
+            self.report({'WARNING'}, "Nothing selected.")
+            return {'CANCELLED'}
 
         def find_layer(layers):
             for coll in (layers.float_color, layers.color):
@@ -373,14 +371,13 @@ class lr_pick_vertex_color(bpy.types.Operator):
         else:
             layer = find_layer(bm.verts.layers)
             if layer is not None:
-                vs = verts if verts is not None else list(active.verts)
-                colors = [v[layer] for v in vs]
+                colors = [v[layer] for v in verts]
 
         if layer is None:
             self.report({'WARNING'}, f"No BMesh color layer found for '{name}'.")
             return {'CANCELLED'}
         if not colors:
-            self.report({'WARNING'}, "Active element has no face corners (loose vertex or edge).")
+            self.report({'WARNING'}, "Selection has no face corners (loose vertices or edges).")
             return {'CANCELLED'}
 
         n = len(colors)
